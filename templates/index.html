@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Vĩ Nhân - Khám Phá Lịch Sử{% endblock %}
+
+{% block content %}
+<div class="row mb-5 text-center mt-3">
+    <div class="col-lg-8 mx-auto">
+        <h1 class="display-4 title-gradient mb-3">EduTM - Cổng thời gian tri thức</h1>
+        <p class="lead text-secondary">
+            Xóa bỏ sự khô khan của lớp học truyền thống. Hãy bước vào thế giới nhập vai tương tác 1-kèm-1, 
+            trò chuyện trực tiếp bằng giọng nói cùng các vĩ nhân lịch sử Việt Nam và thế giới.
+        </p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mx-auto">
+        <div class="glass-panel py-3 px-4 d-flex align-items-center gap-3">
+            <i class="fa-solid fa-magnifying-glass text-secondary"></i>
+            <input type="text" id="searchCharacter" class="form-control bg-transparent border-0 text-white placeholder-secondary" placeholder="Tìm kiếm vĩ nhân lịch sử (Einstein, Trần Hưng Đạo...)" style="box-shadow: none;">
+        </div>
+    </div>
+</div>
+
+<!-- Characters Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="charactersGrid">
+    {% for char in characters %}
+        <div class="col character-col" data-name="{{ char.name | lower }}">
+            <div class="character-card" onclick="window.location.href='{{ url_for('chat_room', char_id=char.id) }}'">
+                <div class="character-avatar-wrapper">
+                    {% if char.avatar_url %}
+                        <img src="{{ char.avatar_url }}" alt="{{ char.name }}" class="character-avatar">
+                    {% else %}
+                        <img src="/static/images/default_avatar.png" alt="{{ char.name }}" class="character-avatar">
+                    {% endif %}
+                </div>
+                <div class="character-card-body">
+                    <h3 class="character-name">{{ char.name }}</h3>
+                    <p class="character-desc">
+                        {{ char.system_prompt | truncate(150, true, '...') }}
+                    </p>
+                    <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn-enter-journey">
+                        <i class="fa-solid fa-bolt-lightning me-1"></i> BẮT ĐẦU DU HÀNH
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-12 text-center py-5">
+            <div class="glass-panel">
+                <i class="fa-solid fa-user-slash fa-3x text-secondary mb-3"></i>
+                <h3>Chưa có nhân vật nào trong hệ thống</h3>
+                <p class="text-secondary">Hãy đăng nhập tài khoản Quản trị viên để thêm nhân vật lịch sử mới.</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Search logic script -->
+<script>
+    document.getElementById('searchCharacter').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        const cols = document.querySelectorAll('.character-col');
+        
+        cols.forEach(col => {
+            const name = col.getAttribute('data-name');
+            if (name.includes(query)) {
+                col.style.display = 'block';
+            } else {
+                col.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

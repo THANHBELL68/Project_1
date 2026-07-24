@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block title %}Bảng Điều Khiển Quản Trị - EduTM - Cổng thời gian tri thức{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center mt-3">
+    <div class="col-md-6">
+        <h2 class="title-gradient"><i class="fa-solid fa-user-shield"></i> Hệ thống Quản trị viên</h2>
+        <p class="text-secondary mb-0">Quản lý cơ sở dữ liệu vĩ nhân, hệ thống dòng kiến thức, cấu hình prompt và nhiệt độ AI.</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <button class="btn btn-register-custom px-4 py-2" data-bs-toggle="modal" data-bs-target="#addCharacterModal">
+            <i class="fa-solid fa-plus-circle me-1"></i> Thêm Nhân Vật Mới
+        </button>
+    </div>
+</div>
+
+<!-- Characters CRUD List -->
+<div class="row">
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <h3 class="title-cyan-gradient mb-4"><i class="fa-solid fa-users"></i> Danh sách Vĩ nhân</h3>
+            
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Ảnh</th>
+                            <th>Tên nhân vật</th>
+                            <th>System Prompt (Tính cách AI)</th>
+                            <th>Nhiệt độ (Temp)</th>
+                            <th>Dòng kiến thức (Bài giảng)</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for char in characters %}
+                            <tr>
+                                <td>
+                                    {% if char.avatar_url %}
+                                        <img src="{{ char.avatar_url }}" alt="{{ char.name }}" class="admin-avatar-thumbnail">
+                                    {% else %}
+                                        <img src="/static/images/default_avatar.png" alt="{{ char.name }}" class="admin-avatar-thumbnail">
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold">{{ char.name }}</td>
+                                <td>
+                                    <small class="text-secondary d-block" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ char.system_prompt }}">
+                                        {{ char.system_prompt }}
+                                    </small>
+                                </td>
+                                <td><span class="badge bg-purple">{{ char.temperature }}</span></td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        {% for topic in char.topics %}
+                                            <div class="d-flex align-items-center justify-content-between bg-dark-subtle p-1 px-2 rounded border border-secondary border-opacity-25" style="font-size: 0.82rem;">
+                                                <span class="text-truncate" style="max-width: 140px;">{{ topic.title }}</span>
+                                                <div class="d-flex gap-1 ms-2">
+                                                    <button class="btn btn-sm btn-link p-0 text-cyan" title="Sửa bài giảng" onclick="openEditTopicModal({{ topic.id }}, '{{ topic.title | replace("'", "\\'") }}', '{{ topic.lecture_content | replace("\n", "\\n") | replace("'", "\\'") }}')">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+                                                    <form action="{{ url_for('delete_topic', topic_id=topic.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bài giảng này?')">
+                                                        <button type="submit" class="btn btn-sm btn-link p-0 text-danger" title="Xóa">
+                                                            <i class="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">Chưa có bài giảng</span>
+                                        {% endfor %}
+                                        <button class="btn btn-sm btn-outline-info mt-1" style="font-size: 0.78rem;" onclick="openAddTopicModal({{ char.id }}, '{{ char.name }}')">
+                                            <i class="fa-solid fa-plus"></i> Thêm bài giảng
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-primary" onclick="openEditCharModal({{ char.id }}, '{{ char.name | replace("'", "\\'") }}', '{{ char.system_prompt | replace("\n", "\\n") | replace("'", "\\'") }}', {{ char.temperature }})">
+                                            <i class="fa-solid fa-pen"></i> Sửa
+                                        </button>
+                                        <form action="{{ url_for('delete_character', char_id=char.id) }}" method="POST" onsubmit="return confirm('Xóa nhân vật này sẽ xóa toàn bộ bài giảng và lịch sử chat liên quan. Bạn có chắc chắn?')">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fa-solid fa-trash-can"></i> Xóa
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-4">Chưa có nhân vật nào trong hệ thống.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- Add Character Modal -->
+<div class="modal fade custom-modal" id="addCharacterModal" tabindex="-1" aria-labelledby="addCharacterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content glass-panel border-secondary border-opacity-50 text-white bg-dark">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title title-cyan-gradient" id="addCharacterModalLabel"><i class="fa-solid fa-user-plus"></i> Thêm nhân vật lịch sử</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_character') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="name" class="form-label text-secondary fw-semibold">Tên nhân vật lịch sử</label>
+                        <input type="text" class="form-control auth-form-input" id="name" name="name" required placeholder="Ví dụ: Quang Trung - Nguyễn Huệ">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="avatar" class="form-label text-secondary fw-semibold">Ảnh đại diện (Avatar)</label>
+                        <input type="file" class="form-control auth-form-input" id="avatar" name="avatar" accept="image/*">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="system_prompt" class="form-label text-secondary fw-semibold">System Prompt (Quy định tính cách, xưng hô của AI)</label>
+                        <textarea class="form-control auth-form-input" id="system_prompt" name="system_prompt" rows="5" required placeholder="Bạn là Quang Trung Hoàng đế... Hãy xưng hô 'Trẫm' và giảng dạy học sinh..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="temperature" class="form-label text-secondary fw-semibold">Độ sáng tạo của AI (Temperature: 0.1 đến 1.0)</label>
+                        <input type="number" class="form-control auth-form-input" id="temperature" name="temperature" min="0.1" max="1.0" step="0.1" value="0.7">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-register-custom">Lưu nhân vật</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Character Modal -->
+<div class="modal fade custom-modal" id="editCharacterModal" tabindex="-1" aria-labelledby="editCharacterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content glass-panel border-secondary border-opacity-50 text-white bg-dark">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title title-cyan-gradient" id="editCharacterModalLabel"><i class="fa-solid fa-user-pen"></i> Chỉnh sửa nhân vật</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editCharForm" method="POST" enctype="multipart/form-data">
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label text-secondary fw-semibold">Tên nhân vật lịch sử</label>
+                        <input type="text" class="form-control auth-form-input" id="edit_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_avatar" class="form-label text-secondary fw-semibold">Thay đổi ảnh đại diện (Để trống nếu giữ nguyên)</label>
+                        <input type="file" class="form-control auth-form-input" id="edit_avatar" name="avatar" accept="image/*">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_system_prompt" class="form-label text-secondary fw-semibold">System Prompt (Tính cách AI)</label>
+                        <textarea class="form-control auth-form-input" id="edit_system_prompt" name="system_prompt" rows="5" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_temperature" class="form-label text-secondary fw-semibold">Nhiệt độ (Temperature)</label>
+                        <input type="number" class="form-control auth-form-input" id="edit_temperature" name="temperature" min="0.1" max="1.0" step="0.1">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Topic Modal -->
+<div class="modal fade custom-modal" id="addTopicModal" tabindex="-1" aria-labelledby="addTopicModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content glass-panel border-secondary border-opacity-50 text-white bg-dark">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title title-cyan-gradient" id="addTopicModalLabel"><i class="fa-solid fa-route"></i> Thêm Dòng kiến thức cho <span id="addTopicCharName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_topic') }}" method="POST">
+                <input type="hidden" id="addTopicCharId" name="character_id">
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="topic_title" class="form-label text-secondary fw-semibold">Tiêu đề chủ đề</label>
+                        <input type="text" class="form-control auth-form-input" id="topic_title" name="title" required placeholder="Ví dụ: Đại phá quân Thanh">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="topic_lecture" class="form-label text-secondary fw-semibold">Nội dung bài giảng cốt lõi (Textarea văn bản lớn)</label>
+                        <textarea class="form-control auth-form-input" id="topic_lecture" name="lecture_content" rows="6" required placeholder="Viết chi tiết bài giảng ở đây để nhân vật lịch sử nói và dùng làm tài liệu gốc..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-register-custom">Thêm bài giảng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Topic Modal -->
+<div class="modal fade custom-modal" id="editTopicModal" tabindex="-1" aria-labelledby="editTopicModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content glass-panel border-secondary border-opacity-50 text-white bg-dark">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title title-cyan-gradient" id="editTopicModalLabel"><i class="fa-solid fa-file-pen"></i> Chỉnh sửa bài giảng</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editTopicForm" method="POST">
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="edit_topic_title" class="form-label text-secondary fw-semibold">Tiêu đề chủ đề</label>
+                        <input type="text" class="form-control auth-form-input" id="edit_topic_title" name="title" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_topic_lecture" class="form-label text-secondary fw-semibold">Nội dung bài giảng cốt lõi</label>
+                        <textarea class="form-control auth-form-input" id="edit_topic_lecture" name="lecture_content" rows="6" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu bài giảng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

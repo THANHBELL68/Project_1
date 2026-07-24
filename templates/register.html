@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng Ký Tài Khoản{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="glass-panel">
+        <h2 class="text-center title-gradient mb-4">Đăng Ký</h2>
+        
+        <form action="{{ url_for('register') }}" method="POST">
+            <div class="auth-form-field">
+                <label for="username"><i class="fa-solid fa-user"></i> Tên đăng nhập</label>
+                <input type="text" id="username" name="username" class="auth-form-input" placeholder="Nhập tên đăng nhập..." required autocomplete="off">
+            </div>
+            
+            <div class="auth-form-field">
+                <label for="email"><i class="fa-solid fa-envelope"></i> Email</label>
+                <input type="email" id="email" name="email" class="auth-form-input" placeholder="Nhập địa chỉ email..." required>
+            </div>
+            
+            <div class="auth-form-field">
+                <label for="password"><i class="fa-solid fa-lock"></i> Mật khẩu</label>
+                <input type="password" id="password" name="password" class="auth-form-input" placeholder="Nhập mật khẩu..." required>
+            </div>
+            
+            <button type="submit" class="btn-auth-submit">ĐĂNG KÝ NGAY</button>
+        </form>
+        
+        <div class="auth-footer">
+            Đã có tài khoản? <a href="{{ url_for('login') }}">Đăng nhập ngay</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

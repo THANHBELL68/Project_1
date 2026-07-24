@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Trò Chuyện Với {{ character.name }} - EduTM - Cổng thời gian tri thức{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('index') }}" class="back-dashboard-btn">
+    <i class="fa-solid fa-arrow-left"></i> Trở về Dashboard
+</a>
+
+<div class="row chat-window g-4">
+    <!-- Left Column: Avatar, Voice Controls, Timeline -->
+    <div class="col-lg-4">
+        <div class="glass-panel text-center h-100 d-flex flex-column justify-content-between">
+            <div>
+                <!-- Character Avatar / Video Container -->
+                <div class="avatar-large-container mb-3 mx-auto">
+                    {% if character.avatar_url %}
+                        <img src="{{ character.avatar_url }}" alt="{{ character.name }}" id="characterAvatar" class="avatar-large">
+                    {% else %}
+                        <img src="/static/images/default_avatar.png" alt="{{ character.name }}" id="characterAvatar" class="avatar-large">
+                    {% endif %}
+                    
+                    <!-- Soundwaves visual when TTS is speaking -->
+                    <div class="speaking-overlay" id="speakingOverlay">
+                        <div class="audio-waves">
+                            <div class="audio-wave-bar"></div>
+                            <div class="audio-wave-bar"></div>
+                            <div class="audio-wave-bar"></div>
+                            <div class="audio-wave-bar"></div>
+                            <div class="audio-wave-bar"></div>
+                        </div>
+                        <span class="speaking-text" id="speakingText">Đang giảng bài...</span>
+                    </div>
+                </div>
+                
+                <h3 class="mb-1 text-glow">{{ character.name }}</h3>
+                <p class="text-secondary small">Nhân vật lịch sử AI nhập vai</p>
+                
+                <!-- Voice controls -->
+                <div class="voice-panel mb-4">
+                    <button class="voice-btn-circular" id="toggleMuteBtn" title="Bật/Tắt giọng đọc bài giảng">
+                        <i class="fa-solid fa-volume-high" id="muteIcon"></i>
+                    </button>
+                    <button class="voice-btn-circular" id="micBtn" title="Nói chuyện qua Micro (STT)">
+                        <i class="fa-solid fa-microphone" id="micIcon"></i>
+                    </button>
+                    <button class="voice-btn-circular" id="stopSpeechBtn" title="Dừng đọc">
+                        <i class="fa-solid fa-square"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Timeline (Dòng Kiến Thức) -->
+            <div class="timeline-container text-start">
+                <div class="timeline-title">
+                    <i class="fa-solid fa-route"></i> Dòng kiến thức
+                </div>
+                <div class="timeline-list">
+                    {% for topic in topics %}
+                        <div class="timeline-item" data-topic-id="{{ topic.id }}" onclick="activateTopic(this, {{ topic.id }})">
+                            {{ topic.title }}
+                        </div>
+                    {% else %}
+                        <p class="text-secondary small">Vĩ nhân này chưa được cập nhật dòng kiến thức nào.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Interactive Chat Panel -->
+    <div class="col-lg-8">
+        <div class="chat-container">
+            <!-- Header -->
+            <div class="chat-messages-header">
+                <span class="status-dot"></span>
+                <span>Hội thoại với {{ character.name }}</span>
+            </div>
+            
+            <!-- Messages Container -->
+            <div class="chat-messages-body" id="chatMessages">
+                <!-- Fallback greeting if history is empty -->
+                {% if not history %}
+                    <div class="chat-bubble character">
+                        Chào bạn! Hãy chọn một **Dòng kiến thức** ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
+                        <div class="chat-bubble-meta">Hệ thống</div>
+                    </div>
+                {% else %}
+                    {% for msg in history %}
+                        <div class="chat-bubble {{ msg.sender }}">
+                            {{ msg.message }}
+                            <div class="chat-bubble-meta">{{ 'Bạn' if msg.sender == 'user' else character.name }}</div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <!-- Typing indicator -->
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+            
+            <!-- Suggested Chips (Gợi ý câu hỏi phụ) -->
+            <div class="px-3">
+                <div class="suggested-chips-container" id="suggestedChips" style="display: none;">
+                    <!-- Chips are rendered dynamically by JS -->
+                </div>
+            </div>
+            
+            <!-- Form Input -->
+            <div class="chat-input-bar">
+                <input type="text" id="chatInput" class="chat-input-field" placeholder="Nhập câu hỏi hoặc nhấn Micro để nói..." autocomplete="off">
+                <button class="btn-chat-send" id="sendBtn" title="Gửi câu hỏi">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Pass character specific details to JS -->
+<script>
+    const CHARACTER_ID = {{ character.id }};
+    const CHARACTER_NAME = "{{ character.name }}";
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

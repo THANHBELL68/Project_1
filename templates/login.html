@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng Nhập Hệ Thống{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="glass-panel">
+        <h2 class="text-center title-gradient mb-4">Đăng Nhập</h2>
+        
+        <form action="{{ url_for('login') }}" method="POST">
+            <div class="auth-form-field">
+                <label for="username"><i class="fa-solid fa-user"></i> Tên đăng nhập</label>
+                <input type="text" id="username" name="username" class="auth-form-input" placeholder="Tên đăng nhập..." required autocomplete="username">
+            </div>
+            
+            <div class="auth-form-field">
+                <label for="password"><i class="fa-solid fa-lock"></i> Mật khẩu</label>
+                <input type="password" id="password" name="password" class="auth-form-input" placeholder="Mật khẩu..." required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="btn-auth-submit">ĐĂNG NHẬP</button>
+        </form>
+        
+        <div class="auth-footer">
+            Chưa có tài khoản? <a href="{{ url_for('register') }}">Đăng ký tại đây</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

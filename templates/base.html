@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Du hành thời gian, gặp lại các vĩ nhân lịch sử và trải nghiệm mô hình học tập tương tác nhập vai 1-kèm-1 cùng AI.">
+    <title>{% block title %}Gặp Lại Vĩ Nhân Lịch Sử{% endblock %} - EduTM - Cổng thời gian tri thức</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Background Space-Time Effect -->
+    <div class="space-bg"></div>
+    <div class="space-stars"></div>
+    
+    <!-- Custom Glassmorphism Navbar -->
+    <nav class="navbar navbar-expand-lg custom-navbar">
+        <div class="container">
+            <a class="navbar-brand-custom" href="{{ url_for('index') }}">
+                <i class="fa-solid fa-hourglass-half text-glow animate-spin-slow"></i>
+                <span>EduTM - Cổng thời gian tri thức</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"><i class="fa-solid fa-bars text-white"></i></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    {% if session.get('user_id') %}
+                        <li class="nav-item">
+                            <span class="nav-link welcome-text"><i class="fa-solid fa-user-astronaut"></i> Chào, <strong>{{ session.get('username') }}</strong></span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link nav-btn-glass" href="{{ url_for('index') }}"><i class="fa-solid fa-compass"></i> Khám phá</a>
+                        </li>
+                        {% if session.get('role') == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link nav-btn-glass text-warning" href="{{ url_for('admin_panel') }}"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item ms-2">
+                            <a class="btn btn-logout" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link nav-btn-glass" href="{{ url_for('login') }}"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</a>
+                        </li>
+                        <li class="nav-item ms-2">
+                            <a class="btn btn-register-custom" href="{{ url_for('register') }}"><i class="fa-solid fa-user-plus"></i> Đăng ký</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container main-container py-4">
+        <!-- Toast / Notification messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+                    {% for category, message in messages %}
+                        <div class="toast show custom-toast align-items-center text-white bg-{{ category if category != 'danger' else 'dark' }} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="fa-solid {% if category == 'success' %}fa-circle-check text-success{% elif category == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-info{% endif %} me-2"></i>
+                                    {{ message }}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 text-center">
+        <div class="container">
+            <span class="text-footer-muted">
+                © 2026 EduTM.education_history@gmail.com
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS CDN & Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Dismiss toast alerts automatically after 4 seconds
+        setTimeout(() => {
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(toast => {
+                const bsToast = bootstrap.Toast.getInstance(toast);
+                if (bsToast) bsToast.hide();
+                else toast.classList.remove('show');
+            });
+        }, 4000);
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
