@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-import google.generativeai as genai
+from openai import OpenAI
 from database import get_db_connection, init_db
 
 # Load environment variables
@@ -18,13 +18,17 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 # Initialize database on startup to ensure tables exist
 init_db()
 
-# Configure Gemini API
-gemini_key = os.getenv("GEMINI_API_KEY")
-if gemini_key and gemini_key != "YOUR_GEMINI_API_KEY_HERE":
-    genai.configure(api_key=gemini_key)
-    print("Gemini API configured successfully.")
+# Configure NVIDIA NIM (OpenAI-compatible API)
+nim_base_url = os.getenv("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1")
+nim_api_key = os.getenv("NVIDIA_API_KEY")
+nim_model = os.getenv("NVIDIA_NIM_MODEL", "nvidia/nemotron-3-ultra")
+
+if nim_api_key and nim_api_key != "YOUR_NVIDIA_API_KEY_HERE":
+    nim_client = OpenAI(base_url=nim_base_url, api_key=nim_api_key)
+    print(f"NVIDIA NIM configured successfully (model: {nim_model}).")
 else:
-    print("WARNING: GEMINI_API_KEY is not set. Chat features will run in mock mode.")
+    nim_client = None
+    print("WARNING: NVIDIA_API_KEY is not set. Chat features will run in mock mode.")
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -196,43 +200,34 @@ def handle_chat():
             system_prompt += topic_context
 
     ai_reply = ""
-    
-    # Check if Gemini key is active
-    if gemini_key and gemini_key != "YOUR_GEMINI_API_KEY_HERE":
+
+    # Check if NIM client is active
+    if nim_client:
         try:
-            # Package messages for Gemini SDK
-            contents = []
-            
-            # Format history for Gemini
+            # Build messages for OpenAI-compatible API
+            messages = [{"role": "system", "content": system_prompt}]
+
+            # Add conversation history
             for row in history_rows:
-                role = "user" if row['sender'] == 'user' else 'model'
-                contents.append({
-                    "role": role,
-                    "parts": [row['message']]
-                })
-                
-            # Set system instruction
-            model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
-                system_instruction=system_prompt
+                role = "user" if row['sender'] == 'user' else 'assistant'
+                messages.append({"role": role, "content": row['message']})
+
+            # Request generation from NIM
+            response = nim_client.chat.completions.create(
+                model=nim_model,
+                messages=messages,
+                temperature=character['temperature'] or 0.7,
+                max_tokens=2048,
             )
-            
-            # Request generation
-            response = model.generate_content(
-                contents=contents,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=character['temperature'] or 0.7
-                )
-            )
-            
-            ai_reply = response.text
+
+            ai_reply = response.choices[0].message.content
         except Exception as e:
-            print(f"Gemini API Error: {str(e)}")
+            print(f"NIM API Error: {str(e)}")
             ai_reply = f"Thực xin lỗi, ta đang gặp chút khó khăn khi kết nối với tinh tú vũ trụ (Lỗi kết nối AI: {str(e)}). Ngươi hãy hỏi lại sau nhé!"
     else:
         # Fallback Mock AI response
-        ai_reply = f"[MÔ PHỎNG] Ta là {character['name']}. Hiện tại khóa API Gemini chưa được cấu hình. Câu hỏi của bạn là: '{message}'. Khi có API key, ta sẽ trả lời chính xác theo tính cách của ta!"
-        
+        ai_reply = f"[MÔ PHỎNG] Ta là {character['name']}. Hiện tại NVIDIA NIM chưa được cấu hình. Câu hỏi của bạn là: '{message}'. Khi có API key, ta sẽ trả lời chính xác theo tính cách của ta!"
+
     # Save character response to database
     conn.execute(
         'INSERT INTO chat_history (user_id, character_id, sender, message) VALUES (?, ?, ?, ?)',
@@ -455,4 +450,4 @@ def delete_topic(topic_id):
     return redirect(url_for('admin_panel'))
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
