@@ -15,6 +15,9 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "history_voyage_secret_key_13579"
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
+# Initialize database on startup to ensure tables exist
+init_db()
+
 # Configure Gemini API
 gemini_key = os.getenv("GEMINI_API_KEY")
 if gemini_key and gemini_key != "YOUR_GEMINI_API_KEY_HERE":
@@ -206,13 +209,6 @@ def handle_chat():
                 contents.append({
                     "role": role,
                     "parts": [row['message']]
-                })
-                
-            # If contents is empty, add the current message
-            if not contents:
-                contents.append({
-                    "role": "user",
-                    "parts": [message]
                 })
                 
             # Set system instruction

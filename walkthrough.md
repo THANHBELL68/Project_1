@@ -43,14 +43,20 @@ Máy chủ Flask đã hoạt động ổn định cục bộ. Chúng tôi đã t
 
 ## 💡 Hướng dẫn cấu hình và chạy dự án
 
-1. **Khởi động Server**:
-   Chạy lệnh sau trong thư mục `c:\Project`:
+1. **Cài đặt các thư viện cần thiết**:
+   Mở terminal trong thư mục dự án và chạy lệnh sau để cài đặt tất cả các thư viện Python được định nghĩa trong `requirements.txt`:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Khởi động Server**:
+   Sau khi cài đặt thành công, chạy lệnh sau:
    ```bash
    python app.py
    ```
    Ứng dụng sẽ hoạt động tại địa chỉ: `http://127.0.0.1:5000`
 
-2. **Tài khoản kiểm thử**:
+3. **Tài khoản kiểm thử**:
    - **Tài khoản học sinh (Student)**: 
      - Username: `student`
      - Mật khẩu: `student123`
@@ -59,5 +65,5 @@ Máy chủ Flask đã hoạt động ổn định cục bộ. Chúng tôi đã t
      - Username: `admin`
      - Mật khẩu: `admin123`
 
-3. **Cấu hình Gemini API**:
+4. **Cấu hình Gemini API**:
    Vui lòng mở tệp [.env](file:///c:/Project/.env) và dán API Key của bạn vào dòng `GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE` để kích hoạt hoàn toàn trí não AI cho các vĩ nhân.
