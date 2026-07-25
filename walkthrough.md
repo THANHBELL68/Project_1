@@ -44,13 +44,13 @@ Máy chủ Flask đã hoạt động ổn định cục bộ. Chúng tôi đã t
 ## 💡 Hướng dẫn cấu hình và chạy dự án
 
 1. **Cài đặt các thư viện cần thiết**:
-   Mở terminal trong thư mục dự án và chạy lệnh sau để cài đặt tất cả các thư viện Python được định nghĩa trong `requirements.txt`:
+   Mở terminal và di chuyển vào thư mục gốc của dự án (thư mục `Project_1`, nơi chứa tệp `app.py`). Sau đó, chạy lệnh sau để cài đặt các thư viện cần thiết:
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Khởi động Server**:
-   Sau khi cài đặt thành công, chạy lệnh sau:
+   Sau khi cài đặt thành công và vẫn đang ở trong thư mục gốc của dự án, chạy lệnh sau:
    ```bash
    python app.py
    ```
