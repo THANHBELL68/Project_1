@@ -19,7 +19,7 @@
                     {% else %}
                         <img src="/static/images/default_avatar.png" alt="{{ character.name }}" id="characterAvatar" class="avatar-large">
                     {% endif %}
-                    
+
                     <!-- Soundwaves visual when TTS is speaking -->
                     <div class="speaking-overlay" id="speakingOverlay">
                         <div class="audio-waves">
@@ -32,10 +32,10 @@
                         <span class="speaking-text" id="speakingText">Đang giảng bài...</span>
                     </div>
                 </div>
-                
+
                 <h3 class="mb-1 text-glow">{{ character.name }}</h3>
                 <p class="text-secondary small">Nhân vật lịch sử AI nhập vai</p>
-                
+
                 <!-- Voice controls -->
                 <div class="voice-panel mb-4">
                     <button class="voice-btn-circular" id="toggleMuteBtn" title="Bật/Tắt giọng đọc bài giảng">
@@ -49,7 +49,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <!-- Timeline (Dòng Kiến Thức) -->
             <div class="timeline-container text-start">
                 <div class="timeline-title">
@@ -67,7 +67,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Right Column: Interactive Chat Panel -->
     <div class="col-lg-8">
         <div class="chat-container">
@@ -76,24 +76,39 @@
                 <span class="status-dot"></span>
                 <span>Hội thoại với {{ character.name }}</span>
             </div>
-            
+
             <!-- Messages Container -->
             <div class="chat-messages-body" id="chatMessages">
                 <!-- Fallback greeting if history is empty -->
                 {% if not history %}
-                    <div class="chat-bubble character">
-                        Chào bạn! Hãy chọn một **Dòng kiến thức** ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
-                        <div class="chat-bubble-meta">Hệ thống</div>
+                    <div class="chat-message">
+                        <div class="chat-bubble-wrapper">
+                            <div class="chat-bubble character">
+                                Chào bạn! Hãy chọn một <strong>Dòng kiến thức</strong> ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
+                            </div>
+                            <div class="chat-bubble-meta">{{ character.name }}</div>
+                        </div>
                     </div>
                 {% else %}
                     {% for msg in history %}
-                        <div class="chat-bubble {{ msg.sender }}">
-                            {{ msg.message }}
-                            <div class="chat-bubble-meta">{{ 'Bạn' if msg.sender == 'user' else character.name }}</div>
-                        </div>
+                        {% if msg.sender == 'user' %}
+                            <div class="chat-message user">
+                                <div class="chat-bubble-wrapper">
+                                    <div class="chat-bubble user">{{ msg.message }}</div>
+                                    <div class="chat-bubble-meta">Bạn</div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="chat-message">
+                                <div class="chat-bubble-wrapper">
+                                    <div class="chat-bubble character">{{ msg.message }}</div>
+                                    <div class="chat-bubble-meta">{{ character.name }}</div>
+                                </div>
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 {% endif %}
-                
+
                 <!-- Typing indicator -->
                 <div class="typing-indicator" id="typingIndicator">
                     <div class="typing-dot"></div>
@@ -101,14 +116,14 @@
                     <div class="typing-dot"></div>
                 </div>
             </div>
-            
+
             <!-- Suggested Chips (Gợi ý câu hỏi phụ) -->
             <div class="px-3">
                 <div class="suggested-chips-container" id="suggestedChips" style="display: none;">
                     <!-- Chips are rendered dynamically by JS -->
                 </div>
             </div>
-            
+
             <!-- Form Input -->
             <div class="chat-input-bar">
                 <input type="text" id="chatInput" class="chat-input-field" placeholder="Nhập câu hỏi hoặc nhấn Micro để nói..." autocomplete="off">
@@ -126,6 +141,17 @@
 <script>
     const CHARACTER_ID = {{ character.id }};
     const CHARACTER_NAME = "{{ character.name }}";
+
+    // Render formatted messages from history
+    document.addEventListener('DOMContentLoaded', () => {
+        const charBubbles = document.querySelectorAll('.chat-bubble.character');
+        charBubbles.forEach(bubble => {
+            const rawText = bubble.textContent;
+            if (rawText && typeof formatMessage === 'function') {
+                bubble.innerHTML = formatMessage(rawText);
+            }
+        });
+    });
 </script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}
