@@ -5,6 +5,165 @@ let synthesis = window.speechSynthesis;
 let recognition = null;
 let currentActiveTopicId = null;
 
+/**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Raw text to escape
+ * @returns {string} HTML-escaped text safe for innerHTML
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Convert plain text with basic markdown to HTML
+ * Supports: **bold**, *italic*, `code`, [link](url), line breaks
+ * @param {string} text - Raw message text
+ * @returns {string} HTML-formatted message
+ */
+function formatMessage(text) {
+    if (!text) return '';
+
+    // First, escape all HTML
+    let html = escapeHtml(text);
+
+    // Convert line breaks to <br>
+    html = html.replace(/\n/g, '<br>');
+
+    // Convert **bold** to <strong>
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert *italic* to <em> (but not inside already bold)
+    html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+    // Convert `inline code` to <code>
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+    // Convert [text](url) to <a href="url">text</a>
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    return html;
+}
+
+/**
+ * Create a chat message element with proper rendering
+ * @param {string} message - The message text
+ * @param {string} senderName - Name of sender (for meta)
+ * @param {string} senderType - 'user' or 'character'
+ * @param {boolean} useTypewriter - Whether to use typewriter effect
+ * @returns {HTMLElement} The chat message element
+ */
+function createChatMessage(message, senderName, senderType, useTypewriter = false) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `chat-message ${senderType === 'user' ? 'user' : ''}`;
+
+    const bubbleWrapper = document.createElement('div');
+    bubbleWrapper.className = 'chat-bubble-wrapper';
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${senderType === 'user' ? 'user' : 'character'}`;
+    // We'll use innerHTML for formatted content, but only for character messages
+    if (senderType === 'character') {
+        bubble.innerHTML = formatMessage(message);
+    } else {
+        // User messages: plain text with preserved line breaks
+        bubble.textContent = message;
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'chat-bubble-meta';
+    meta.textContent = senderName;
+
+    bubbleWrapper.appendChild(bubble);
+    bubbleWrapper.appendChild(meta);
+
+    if (senderType === 'user') {
+        wrapper.appendChild(bubbleWrapper);
+    } else {
+        wrapper.appendChild(bubbleWrapper);
+    }
+
+    return wrapper;
+}
+
+/**
+ * Run typewriter effect for character messages with formatting support
+ * @param {string} text - The message text
+ * @param {string} senderName - Sender name
+ * @param {HTMLElement} container - Messages container
+ */
+function runTypewriter(text, senderName, container) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = 'chat-message';
+
+    const avatar = document.createElement('img');
+    avatar.className = 'chat-avatar';
+    avatar.src = '/static/images/default_avatar.png';
+    avatar.alt = senderName;
+
+    const bubbleWrapper = document.createElement('div');
+    bubbleWrapper.className = 'chat-bubble-wrapper';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble character';
+
+    const meta = document.createElement('div');
+    meta.className = 'chat-bubble-meta';
+    meta.textContent = senderName;
+
+    bubbleWrapper.appendChild(bubble);
+    bubbleWrapper.appendChild(meta);
+    messageWrapper.appendChild(avatar);
+    messageWrapper.appendChild(bubbleWrapper);
+    container.appendChild(messageWrapper);
+    container.scrollTop = container.scrollHeight;
+
+    // Format the text first (with HTML)
+    const formattedHtml = formatMessage(text);
+
+    // Typewriter effect for HTML content - type character by character
+    // But we need to handle HTML tags properly
+    let i = 0;
+    let displayText = '';
+    let isInTag = false;
+    let tagBuffer = '';
+
+    function typeChar() {
+        if (i < formattedHtml.length) {
+            const char = formattedHtml[i];
+
+            if (char === '<') {
+                isInTag = true;
+                tagBuffer = '<';
+            } else if (char === '>' && isInTag) {
+                isInTag = false;
+                tagBuffer += '>';
+                displayText += tagBuffer;
+                bubble.innerHTML = displayText;
+                tagBuffer = '';
+            } else if (isInTag) {
+                tagBuffer += char;
+            } else {
+                displayText += char;
+                bubble.innerHTML = displayText;
+            }
+
+            container.scrollTop = container.scrollHeight;
+            i++;
+
+            // Faster typing for more natural feel
+            const delay = isInTag ? 0 : (15 + Math.random() * 30);
+            setTimeout(typeChar, delay);
+        } else {
+            // Typing complete
+            showSuggestions(currentActiveTopicId);
+        }
+    }
+
+    typeChar();
+}
+
 // Pool of suggested questions based on topics
 const topicSuggestions = {
     // Einstein: Hiệu ứng quang điện
@@ -205,44 +364,76 @@ function stopVisuals() {
     }
 }
 
-// Typewriter effect to output text slowly
-function runTypewriter(text, senderName, container) {
-    const bubble = document.createElement("div");
-    bubble.className = "chat-bubble character";
-    
-    const textSpan = document.createElement("span");
-    bubble.appendChild(textSpan);
-    
-    const meta = document.createElement("div");
-    meta.className = "chat-bubble-meta";
-    meta.innerText = senderName;
-    bubble.appendChild(meta);
-    
-    container.appendChild(bubble);
+// Typewriter effect for character messages with formatting support
+function createFormattedMessage(text, senderName, container) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = 'chat-message';
+
+    const avatar = document.createElement('img');
+    avatar.className = 'chat-avatar';
+    avatar.src = '/static/images/default_avatar.png';
+    avatar.alt = senderName;
+
+    const bubbleWrapper = document.createElement('div');
+    bubbleWrapper.className = 'chat-bubble-wrapper';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble character';
+
+    const meta = document.createElement('div');
+    meta.className = 'chat-bubble-meta';
+    meta.textContent = senderName;
+
+    bubbleWrapper.appendChild(bubble);
+    bubbleWrapper.appendChild(meta);
+    messageWrapper.appendChild(avatar);
+    messageWrapper.appendChild(bubbleWrapper);
+    container.appendChild(messageWrapper);
     container.scrollTop = container.scrollHeight;
 
-    // Convert simple markdown styling like **bold** to HTML before typing (or split formatting)
-    // To keep it simple and responsive, let's type it out and replace markdown tags after typing, 
-    // or just render it cleanly. Let's do a word-by-word typing effect.
-    const words = text.split(" ");
-    let i = 0;
+    // Format the text first (with HTML)
+    const formattedHtml = formatMessage(text);
 
-    function typeWord() {
-        if (i < words.length) {
-            textSpan.innerHTML += (i === 0 ? "" : " ") + words[i];
+    // Typewriter effect for HTML content - type character by character
+    // But we need to handle HTML tags properly
+    let i = 0;
+    let displayText = '';
+    let isInTag = false;
+    let tagBuffer = '';
+
+    function typeChar() {
+        if (i < formattedHtml.length) {
+            const char = formattedHtml[i];
+
+            if (char === '<') {
+                isInTag = true;
+                tagBuffer = '<';
+            } else if (char === '>' && isInTag) {
+                isInTag = false;
+                tagBuffer += '>';
+                displayText += tagBuffer;
+                bubble.innerHTML = displayText;
+                tagBuffer = '';
+            } else if (isInTag) {
+                tagBuffer += char;
+            } else {
+                displayText += char;
+                bubble.innerHTML = displayText;
+            }
+
             container.scrollTop = container.scrollHeight;
             i++;
-            // Type speed relative to word size or average voice reading rate
-            setTimeout(typeWord, 60); 
+
+            // Faster typing for more natural feel
+            const delay = isInTag ? 0 : (15 + Math.random() * 30);
+            setTimeout(typeChar, delay);
         } else {
-            // Apply markdown formatting once typing finishes
-            let formattedHtml = textSpan.innerHTML;
-            formattedHtml = formattedHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            formattedHtml = formattedHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            textSpan.innerHTML = formattedHtml;
+            // Typing complete
+            showSuggestions(currentActiveTopicId);
         }
     }
-    typeWord();
+
+    typeChar();
 }
 
 // Function to handle sending message
@@ -252,19 +443,17 @@ async function sendMessage() {
     if (!message) return;
 
     input.value = "";
-    
+
     const messagesContainer = document.getElementById("chatMessages");
-    
-    // Play user message in chat body
-    const userBubble = document.createElement("div");
-    userBubble.className = "chat-bubble user";
-    userBubble.innerHTML = message + `<div class="chat-bubble-meta">Bạn</div>`;
-    messagesContainer.appendChild(userBubble);
+
+    // Play user message in chat body with new structure
+    const userMessage = createUserMessage(message);
+    messagesContainer.appendChild(userMessage);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
     // Show typing indicator
     const typingIndicator = document.getElementById("typingIndicator");
-    messagesContainer.appendChild(typingIndicator); // move to bottom
+    messagesContainer.appendChild(typingIndicator);
     typingIndicator.style.display = "flex";
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
@@ -295,9 +484,9 @@ async function sendMessage() {
         // Play TTS speech
         speakText(data.reply);
 
-        // Run Typewriter effect
-        runTypewriter(data.reply, CHARACTER_NAME, messagesContainer);
-        
+        // Run Typewriter effect with formatting
+        createFormattedMessage(data.reply, CHARACTER_NAME, messagesContainer);
+
         // Show general or context suggestions
         showSuggestions(currentActiveTopicId);
 
@@ -306,6 +495,11 @@ async function sendMessage() {
         console.error("Chat fetch error:", e);
         showToast("Đã xảy ra lỗi khi gửi yêu cầu lên máy chủ.", "danger");
     }
+}
+
+// Helper to create user message element
+function createUserMessage(message) {
+    return createChatMessage(message, 'Bạn', 'user', false);
 }
 
 // Activate topic / lecture timeline node
@@ -318,7 +512,7 @@ async function activateTopic(element, topicId) {
     currentActiveTopicId = topicId;
 
     const messagesContainer = document.getElementById("chatMessages");
-    
+
     // Show typing indicator
     const typingIndicator = document.getElementById("typingIndicator");
     messagesContainer.appendChild(typingIndicator);
@@ -337,7 +531,7 @@ async function activateTopic(element, topicId) {
 
         // Speak and show lecture text
         speakText(topicData.lecture_content);
-        runTypewriter(topicData.lecture_content, CHARACTER_NAME, messagesContainer);
+        createFormattedMessage(topicData.lecture_content, CHARACTER_NAME, messagesContainer);
 
         // Populate Suggested Chips
         showSuggestions(topicId);
