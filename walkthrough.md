@@ -7,9 +7,9 @@ Chúng tôi đã triển khai hoàn chỉnh toàn bộ mã nguồn của dự á
 ## 🛠️ Các cấu phần đã hoàn thành
 
 1. **Backend & Database**:
-   - [app.py](file:///c:/Project/app.py): Điều hướng các API Endpoints, quản lý session đăng nhập, phân quyền, kết nối Gemini API phục vụ trò chuyện nhập vai và xử lý CRUD của Admin.
+   - [app.py](file:///c:/Project/app.py): Điều hướng các API Endpoints, quản lý session đăng nhập, phân quyền, kết nối **NVIDIA NIM (Nemotron 3 Ultra)** API phục vụ trò chuyện nhập vai và xử lý CRUD của Admin.
    - [database.py](file:///c:/Project/database.py): Cấu hình cơ sở dữ liệu SQLite, thiết lập schema cho người dùng, nhân vật, bài giảng và lịch sử chat. Tự động khởi tạo dữ liệu mẫu cho hai vĩ nhân: **Albert Einstein** và **Trần Hưng Đạo**.
-   - [requirements.txt](file:///c:/Project/requirements.txt) & [.env](file:///c:/Project/.env): Danh sách thư viện Python cần thiết và tệp mẫu biến môi trường.
+   - [requirements.txt](file:///c:/Project/requirements.txt) & [.env](file:///c:/Project/.env): Danh sách thư viện Python cần thiết (thay `google-generativeai` bằng `openai`) và tệp mẫu biến môi trường.
 
 2. **Frontend UI/UX**:
    - [style.css](file:///c:/Project/static/css/style.css): Toàn bộ phong cách thiết kế Glassmorphism & Dark Mode hiện đại, các hiệu ứng nhấp nháy phát sáng khi nói chuyện và sóng âm trực quan sinh động.
@@ -65,5 +65,5 @@ Máy chủ Flask đã hoạt động ổn định cục bộ. Chúng tôi đã t
      - Username: `admin`
      - Mật khẩu: `admin123`
 
-4. **Cấu hình Gemini API**:
-   Vui lòng mở tệp [.env](file:///c:/Project/.env) và dán API Key của bạn vào dòng `GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE` để kích hoạt hoàn toàn trí não AI cho các vĩ nhân.
+4. **Cấu hình NVIDIA NIM API**:
+   Vui lòng mở tệp [.env](file:///c:/Project/.env) và dán API Key của bạn vào dòng `NVIDIA_API_KEY=YOUR_NVIDIA_API_KEY_HERE`. Lấy API key miễn phí tại [https://build.nvidia.com/](https://build.nvidia.com/). Model mặc định là `nvidia/nemotron-3-ultra-55b-a55b`, có thể thay đổi qua biến `NVIDIA_NIM_MODEL`.
