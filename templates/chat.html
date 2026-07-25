@@ -9,7 +9,7 @@
 
 <div class="row chat-window g-4">
     <!-- Left Column: Avatar, Voice Controls, Timeline -->
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="glass-panel text-center h-100 d-flex flex-column justify-content-between">
             <div>
                 <!-- Character Avatar / Video Container -->
@@ -68,8 +68,8 @@
         </div>
     </div>
 
-    <!-- Right Column: Interactive Chat Panel -->
-    <div class="col-lg-8">
+    <!-- Middle Column: Interactive Chat Panel -->
+    <div class="col-lg-5">
         <div class="chat-container">
             <!-- Header -->
             <div class="chat-messages-header">
@@ -133,6 +133,40 @@
             </div>
         </div>
     </div>
+
+    <!-- Right Column: Conversation History Sidebar -->
+    <div class="col-lg-4">
+        <div class="conversation-sidebar">
+            <div class="conversation-sidebar-header">
+                <i class="fa-solid fa-comments"></i> Lịch sử hội thoại
+            </div>
+
+            <button class="btn-new-conversation" id="newConversationBtn">
+                <i class="fa-solid fa-plus"></i> Tạo hội thoại mới
+            </button>
+
+            <div class="conversation-list" id="conversationList">
+                {% if not conversations %}
+                    <div class="empty-conversation-state">
+                        <i class="fa-solid fa-message"></i>
+                        <span>Chưa có hội thoại nào</span>
+                    </div>
+                {% else %}
+                    {% for conv in conversations %}
+                        <div class="conversation-item {% if conv.id == active_conversation_id %}active{% endif %}" data-conv-id="{{ conv.id }}" onclick="switchConversation({{ conv.id }})">
+                            <div class="conversation-item-content">
+                                <span class="conversation-item-title">{{ conv.title }}</span>
+                                <span class="conversation-item-meta">{{ conv.created_at[:10] }}</span>
+                            </div>
+                            <button class="conversation-item-delete" onclick="event.stopPropagation(); deleteConversation({{ conv.id }})" title="Xóa hội thoại">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -141,6 +175,7 @@
 <script>
     const CHARACTER_ID = {{ character.id }};
     const CHARACTER_NAME = "{{ character.name }}";
+    const ACTIVE_CONVERSATION_ID = {{ active_conversation_id if active_conversation_id else 'null' }};
 
     // Render formatted messages from history
     document.addEventListener('DOMContentLoaded', () => {

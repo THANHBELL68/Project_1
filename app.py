@@ -186,19 +186,42 @@ def chat_room(char_id):
         conn.close()
         flash('Nhân vật không tồn tại!', 'danger')
         return redirect(url_for('index'))
-        
+
     topics = conn.execute('SELECT * FROM topics WHERE character_id = ?', (char_id,)).fetchall()
-    
-    # Get chat history for this user and character
-    history = conn.execute('''
-        SELECT sender, message, timestamp 
-        FROM chat_history 
-        WHERE user_id = ? AND character_id = ? 
-        ORDER BY timestamp ASC
-    ''', (session['user_id'], char_id)).fetchall()
-    
+    user_id = session['user_id']
+
+    # Find the most recent conversation for this user + character
+    active_conv = conn.execute('''
+        SELECT id FROM conversations
+        WHERE user_id = ? AND character_id = ?
+        ORDER BY updated_at DESC LIMIT 1
+    ''', (user_id, char_id)).fetchone()
+
+    if active_conv:
+        active_conv_id = active_conv['id']
+        # Load history only for this conversation
+        history = conn.execute('''
+            SELECT sender, message, timestamp
+            FROM chat_history
+            WHERE user_id = ? AND character_id = ? AND conversation_id = ?
+            ORDER BY timestamp ASC
+        ''', (user_id, char_id, active_conv_id)).fetchall()
+    else:
+        active_conv_id = None
+        history = []
+
+    # Load all conversations for sidebar
+    conversations = conn.execute('''
+        SELECT id, title, created_at, updated_at,
+               (SELECT message FROM chat_history WHERE conversation_id = conversations.id AND sender = 'user' ORDER BY timestamp ASC LIMIT 1) as first_message
+        FROM conversations
+        WHERE user_id = ? AND character_id = ?
+        ORDER BY updated_at DESC
+    ''', (user_id, char_id)).fetchall()
+
     conn.close()
-    return render_template('chat.html', character=character, topics=topics, history=history)
+    return render_template('chat.html', character=character, topics=topics, history=history,
+                           active_conversation_id=active_conv_id, conversations=conversations)
 
 @app.route('/chat', methods=['POST'])
 def handle_chat():
@@ -206,36 +229,64 @@ def handle_chat():
     character_id = data.get('character_id')
     message = data.get('message', '').strip()
     topic_id = data.get('topic_id')  # Optional
-    
+    conversation_id = data.get('conversation_id')  # Optional
+
     if not character_id or not message:
         return jsonify({'error': 'Thiếu thông tin yêu cầu.'}), 400
-        
+
     conn = get_db_connection()
     character = conn.execute('SELECT * FROM characters WHERE id = ?', (character_id,)).fetchone()
-    
+
     if not character:
         conn.close()
         return jsonify({'error': 'Nhân vật không tìm thấy.'}), 404
-        
+
     user_id = session['user_id']
-    
+
+    # Auto-create conversation if not provided
+    is_new_conversation = False
+    if not conversation_id:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO conversations (user_id, character_id) VALUES (?, ?)',
+            (user_id, character_id)
+        )
+        conversation_id = cursor.lastrowid
+        is_new_conversation = True
+
     # Save user message to database
     conn.execute(
-        'INSERT INTO chat_history (user_id, character_id, sender, message) VALUES (?, ?, ?, ?)',
-        (user_id, character_id, 'user', message)
+        'INSERT INTO chat_history (user_id, character_id, sender, message, conversation_id) VALUES (?, ?, ?, ?, ?)',
+        (user_id, character_id, 'user', message, conversation_id)
     )
     conn.commit()
-    
-    # Retrieve past chat history (up to last 15 messages)
+
+    # Auto-update conversation title from first user message
+    if is_new_conversation:
+        title_text = message[:50] + ('...' if len(message) > 50 else '')
+        conn.execute(
+            'UPDATE conversations SET title = ? WHERE id = ?',
+            (title_text, conversation_id)
+        )
+        conn.commit()
+
+    # Update conversation timestamp
+    conn.execute(
+        'UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        (conversation_id,)
+    )
+    conn.commit()
+
+    # Retrieve past chat history (up to last 15 messages from THIS conversation)
     history_rows = conn.execute('''
-        SELECT sender, message 
-        FROM chat_history 
-        WHERE user_id = ? AND character_id = ? 
+        SELECT sender, message
+        FROM chat_history
+        WHERE user_id = ? AND character_id = ? AND conversation_id = ?
         ORDER BY id DESC LIMIT 15
-    ''', (user_id, character_id)).fetchall()
-    
+    ''', (user_id, character_id, conversation_id)).fetchall()
+
     # Reverse so it's in chronological order
-    history_rows = reversed(history_rows)
+    history_rows = list(reversed(history_rows))
     
     # Build System Prompt and Context
     system_prompt = character['system_prompt']
@@ -281,15 +332,20 @@ def handle_chat():
 
     # Save character response to database
     conn.execute(
-        'INSERT INTO chat_history (user_id, character_id, sender, message) VALUES (?, ?, ?, ?)',
-        (user_id, character_id, 'character', ai_reply)
+        'INSERT INTO chat_history (user_id, character_id, sender, message, conversation_id) VALUES (?, ?, ?, ?, ?)',
+        (user_id, character_id, 'character', ai_reply, conversation_id)
     )
     conn.commit()
+
+    # Get updated title for response
+    conv_title = conn.execute('SELECT title FROM conversations WHERE id = ?', (conversation_id,)).fetchone()['title']
     conn.close()
-    
+
     return jsonify({
         'reply': ai_reply,
-        'sender': 'character'
+        'sender': 'character',
+        'conversation_id': conversation_id,
+        'title': conv_title
     })
 
 # Topic activation (returns the static lecture content to play first)
@@ -313,16 +369,88 @@ def get_topic(topic_id):
 def text_to_speech():
     data = request.json
     text = data.get('text', '').strip()
-    
+
     if not text:
         return jsonify({'error': 'Không có văn bản.'}), 400
-        
+
     # Standard fallback tells the client to use Web Speech API (Frontend JavaScript)
     # This is highly efficient and works out of the box.
     return jsonify({
         'use_web_speech_api': True,
         'message': 'Sử dụng Web Speech API trên trình duyệt.'
     })
+
+# ── Conversation Management APIs ──
+
+@app.route('/conversations/<int:char_id>')
+def get_conversations(char_id):
+    """Get all conversations for the current user and character."""
+    conn = get_db_connection()
+    conversations = conn.execute('''
+        SELECT c.id, c.title, c.created_at, c.updated_at,
+               (SELECT COUNT(*) FROM chat_history WHERE conversation_id = c.id) as message_count,
+               (SELECT message FROM chat_history WHERE conversation_id = c.id AND sender = 'user' ORDER BY timestamp ASC LIMIT 1) as first_message
+        FROM conversations c
+        WHERE c.user_id = ? AND c.character_id = ?
+        ORDER BY c.updated_at DESC
+    ''', (session['user_id'], char_id)).fetchall()
+    conn.close()
+    return jsonify([dict(conv) for conv in conversations])
+
+@app.route('/conversation/new/<int:char_id>', methods=['POST'])
+def create_conversation(char_id):
+    """Create a new conversation."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO conversations (user_id, character_id) VALUES (?, ?)',
+        (session['user_id'], char_id)
+    )
+    conn.commit()
+    conv_id = cursor.lastrowid
+    conv = conn.execute('SELECT * FROM conversations WHERE id = ?', (conv_id,)).fetchone()
+    conn.close()
+    return jsonify(dict(conv))
+
+@app.route('/conversation/<int:conv_id>', methods=['DELETE'])
+def delete_conversation(conv_id):
+    """Delete a conversation (and cascade delete its messages)."""
+    conn = get_db_connection()
+    conv = conn.execute('SELECT * FROM conversations WHERE id = ?', (conv_id,)).fetchone()
+    if not conv:
+        conn.close()
+        return jsonify({'error': 'Hội thoại không tồn tại.'}), 404
+    if conv['user_id'] != session['user_id']:
+        conn.close()
+        return jsonify({'error': 'Không có quyền xóa hội thoại này.'}), 403
+
+    # Delete messages first (SQLite doesn't support FK cascading for direct deletes)
+    conn.execute('DELETE FROM chat_history WHERE conversation_id = ?', (conv_id,))
+    conn.execute('DELETE FROM conversations WHERE id = ?', (conv_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/conversation/<int:conv_id>/messages')
+def get_conversation_messages(conv_id):
+    """Get all messages of a conversation."""
+    conn = get_db_connection()
+    conv = conn.execute('SELECT * FROM conversations WHERE id = ?', (conv_id,)).fetchone()
+    if not conv:
+        conn.close()
+        return jsonify({'error': 'Hội thoại không tồn tại.'}), 404
+    if conv['user_id'] != session['user_id']:
+        conn.close()
+        return jsonify({'error': 'Không có quyền xem hội thoại này.'}), 403
+
+    messages = conn.execute('''
+        SELECT sender, message, timestamp
+        FROM chat_history
+        WHERE conversation_id = ?
+        ORDER BY timestamp ASC
+    ''', (conv_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(msg) for msg in messages])
 
 # Admin Dashboard
 @app.route('/admin')

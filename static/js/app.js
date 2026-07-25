@@ -4,6 +4,8 @@ let currentUtterance = null;
 let synthesis = window.speechSynthesis;
 let recognition = null;
 let currentActiveTopicId = null;
+let currentConversationId = ACTIVE_CONVERSATION_ID || null;
+let cachedVoices = [];
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -278,10 +280,26 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 
+// Pre-load voices (fix async cold-load bug)
+function loadVoices() {
+    return new Promise((resolve) => {
+        const voices = synthesis.getVoices();
+        if (voices.length > 0) {
+            cachedVoices = voices;
+            resolve(voices);
+        } else {
+            synthesis.onvoiceschanged = () => {
+                cachedVoices = synthesis.getVoices();
+                resolve(cachedVoices);
+            };
+        }
+    });
+}
+
 // Speak text using TTS
 function speakText(text) {
     if (isMuted || !synthesis) return;
-    
+
     // Stop any ongoing speech
     synthesis.cancel();
 
@@ -308,11 +326,13 @@ function speakText(text) {
         currentUtterance = new SpeechSynthesisUtterance(sentence);
         currentUtterance.lang = 'vi-VN';
 
-        // Select a Vietnamese voice if available
-        const voices = synthesis.getVoices();
-        const viVoice = voices.find(voice => voice.lang.includes('vi-VN'));
+        // Select a Vietnamese voice if available (from cache)
+        const viVoice = cachedVoices.find(voice => voice.lang.includes('vi-VN'));
         if (viVoice) {
             currentUtterance.voice = viVoice;
+        } else if (cachedVoices.length > 0) {
+            // No Vietnamese voice found — try to use any voice with lang=vi-VN, browser may choose best fallback
+            console.warn('Không tìm thấy giọng tiếng Việt (vi-VN) trong danh sách voices. Văn bản có thể không được đọc đúng.');
         }
 
         currentUtterance.onstart = () => {
@@ -469,7 +489,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 character_id: CHARACTER_ID,
                 message: message,
-                topic_id: currentActiveTopicId
+                topic_id: currentActiveTopicId,
+                conversation_id: currentConversationId
             })
         });
 
@@ -479,6 +500,20 @@ async function sendMessage() {
         if (data.error) {
             showToast(data.error, "danger");
             return;
+        }
+
+        // Update conversation ID if a new one was created
+        if (data.conversation_id && !currentConversationId) {
+            currentConversationId = data.conversation_id;
+            // Refresh sidebar to show the new conversation with its title
+            loadConversations();
+        } else if (data.title) {
+            // Update the title in sidebar if it changed
+            const activeItem = document.querySelector('.conversation-item.active');
+            if (activeItem) {
+                const titleEl = activeItem.querySelector('.conversation-item-title');
+                if (titleEl) titleEl.textContent = data.title;
+            }
         }
 
         // Play TTS speech
@@ -585,8 +620,250 @@ function showSuggestions(topicId = null) {
     }
 }
 
+// ── Conversation Management ──
+
+/**
+ * Load and render the conversation list in the sidebar.
+ */
+async function loadConversations() {
+    try {
+        const response = await fetch(`/conversations/${CHARACTER_ID}`);
+        const conversations = await response.json();
+        renderConversationList(conversations);
+    } catch (e) {
+        console.error("Error loading conversations:", e);
+    }
+}
+
+/**
+ * Render the conversation list in the sidebar.
+ */
+function renderConversationList(conversations) {
+    const container = document.getElementById("conversationList");
+
+    if (!conversations || conversations.length === 0) {
+        container.innerHTML = `
+            <div class="empty-conversation-state">
+                <i class="fa-solid fa-message"></i>
+                <span>Chưa có hội thoại nào</span>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = conversations.map(conv => `
+        <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" data-conv-id="${conv.id}" onclick="switchConversation(${conv.id})">
+            <div class="conversation-item-content">
+                <span class="conversation-item-title">${escapeHtml(conv.title)}</span>
+                <span class="conversation-item-meta">${formatRelativeTime(conv.updated_at)}</span>
+            </div>
+            <button class="conversation-item-delete" onclick="event.stopPropagation(); deleteConversation(${conv.id})" title="Xóa hội thoại">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+/**
+ * Format a timestamp as relative time in Vietnamese.
+ */
+function formatRelativeTime(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'Z'); // Treat DB timestamps as UTC
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHrs = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMin < 1) return 'Vừa xong';
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    if (diffHrs < 24) return `${diffHrs} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+}
+
+/**
+ * Create a new conversation.
+ */
+async function createNewConversation() {
+    try {
+        const response = await fetch(`/conversation/new/${CHARACTER_ID}`, {
+            method: "POST"
+        });
+        const conv = await response.json();
+
+        // Set as current and clear chat
+        currentConversationId = conv.id;
+
+        const chatContainer = document.getElementById("chatMessages");
+        chatContainer.innerHTML = `
+            <div class="chat-message">
+                <div class="chat-bubble-wrapper">
+                    <div class="chat-bubble character">
+                        Chào bạn! Hãy chọn một <strong>Dòng kiến thức</strong> ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
+                    </div>
+                    <div class="chat-bubble-meta">${CHARACTER_NAME}</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>`;
+
+        // Clear active topic
+        currentActiveTopicId = null;
+        document.querySelectorAll(".timeline-item").forEach(item => {
+            item.classList.remove("active");
+        });
+
+        // Refresh sidebar
+        await loadConversations();
+        showSuggestions(null);
+
+    } catch (e) {
+        console.error("Error creating conversation:", e);
+        showToast("Lỗi khi tạo hội thoại mới.", "danger");
+    }
+}
+
+/**
+ * Switch to a different conversation and load its messages.
+ */
+async function switchConversation(convId) {
+    if (convId === currentConversationId) return;
+
+    currentConversationId = convId;
+    currentActiveTopicId = null;
+
+    // Update active state in sidebar
+    document.querySelectorAll(".conversation-item").forEach(item => {
+        item.classList.toggle("active", parseInt(item.dataset.convId) === convId);
+    });
+
+    // Update timeline active state
+    document.querySelectorAll(".timeline-item").forEach(item => {
+        item.classList.remove("active");
+    });
+
+    // Show typing indicator while loading
+    const chatContainer = document.getElementById("chatMessages");
+    chatContainer.innerHTML = `
+        <div class="typing-indicator" id="typingIndicator" style="display: flex;">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>`;
+
+    try {
+        const response = await fetch(`/conversation/${convId}/messages`);
+        const messages = await response.json();
+
+        if (messages.error) {
+            showToast(messages.error, "danger");
+            return;
+        }
+
+        chatContainer.innerHTML = '';
+
+        if (messages.length === 0) {
+            chatContainer.innerHTML = `
+                <div class="chat-message">
+                    <div class="chat-bubble-wrapper">
+                        <div class="chat-bubble character">
+                            Chào bạn! Hãy chọn một <strong>Dòng kiến thức</strong> ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
+                        </div>
+                        <div class="chat-bubble-meta">${CHARACTER_NAME}</div>
+                    </div>
+                </div>`;
+        } else {
+            messages.forEach(msg => {
+                const msgElement = createChatMessage(msg.message, msg.sender === 'user' ? 'Bạn' : CHARACTER_NAME, msg.sender);
+                chatContainer.appendChild(msgElement);
+            });
+        }
+
+        // Re-add typing indicator
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'typing-indicator';
+        typingIndicator.id = 'typingIndicator';
+        typingIndicator.style.display = 'none';
+        typingIndicator.innerHTML = `
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>`;
+        chatContainer.appendChild(typingIndicator);
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        showSuggestions(null);
+
+    } catch (e) {
+        console.error("Error switching conversation:", e);
+        showToast("Lỗi khi tải hội thoại.", "danger");
+    }
+}
+
+/**
+ * Delete a conversation.
+ */
+async function deleteConversation(convId) {
+    if (!confirm('Bạn có chắc muốn xóa hội thoại này? Tất cả tin nhắn trong hội thoại sẽ bị xóa vĩnh viễn.')) return;
+
+    try {
+        const response = await fetch(`/conversation/${convId}`, { method: "DELETE" });
+        const data = await response.json();
+
+        if (data.error) {
+            showToast(data.error, "danger");
+            return;
+        }
+
+        showToast("Đã xóa hội thoại.", "success");
+
+        // If we deleted the active conversation, switch to another or create new
+        if (currentConversationId === convId) {
+            // Find next available conversation
+            const remainingItems = document.querySelectorAll('.conversation-item:not([data-conv-id="' + convId + '"])');
+            if (remainingItems.length > 0) {
+                const nextId = parseInt(remainingItems[0].dataset.convId);
+                await switchConversation(nextId);
+            } else {
+                // No conversations left — create new one
+                currentConversationId = null;
+                const chatContainer = document.getElementById("chatMessages");
+                chatContainer.innerHTML = `
+                    <div class="chat-message">
+                        <div class="chat-bubble-wrapper">
+                            <div class="chat-bubble character">
+                                Chào bạn! Hãy chọn một <strong>Dòng kiến thức</strong> ở cột bên trái để tôi giảng giải cho bạn, hoặc trực tiếp hỏi tôi bất cứ điều gì liên quan đến cuộc đời và các công trình của tôi nhé!
+                            </div>
+                            <div class="chat-bubble-meta">${CHARACTER_NAME}</div>
+                        </div>
+                    </div>
+                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>`;
+                currentActiveTopicId = null;
+                showSuggestions(null);
+            }
+        }
+
+        // Refresh sidebar
+        await loadConversations();
+
+    } catch (e) {
+        console.error("Error deleting conversation:", e);
+        showToast("Lỗi khi xóa hội thoại.", "danger");
+    }
+}
+
 // Event Listeners setup
 document.addEventListener("DOMContentLoaded", () => {
+    // Pre-load voices
+    loadVoices();
+
     // Setup inputs
     const chatInput = document.getElementById("chatInput");
     const sendBtn = document.getElementById("sendBtn");
@@ -594,16 +871,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleMuteBtn = document.getElementById("toggleMuteBtn");
     const stopSpeechBtn = document.getElementById("stopSpeechBtn");
     const muteIcon = document.getElementById("muteIcon");
+    const newConversationBtn = document.getElementById("newConversationBtn");
 
     // Click Send
     sendBtn.addEventListener("click", sendMessage);
-    
+
     // Enter key sends message
     chatInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
             sendMessage();
         }
     });
+
+    // New conversation button
+    if (newConversationBtn) {
+        newConversationBtn.addEventListener("click", createNewConversation);
+    }
 
     // STT Recording setup
     initRecognition();

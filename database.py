@@ -46,6 +46,20 @@ def init_db():
     )
     ''')
     
+    # Create conversations table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        character_id INTEGER NOT NULL,
+        title TEXT DEFAULT 'Hội thoại mới',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+    )
+    ''')
+
     # Create chat_history table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS chat_history (
@@ -59,7 +73,28 @@ def init_db():
         FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
     )
     ''')
-    
+
+    # Migration: add conversation_id column if it doesn't exist
+    col_check = cursor.execute("PRAGMA table_info(chat_history)").fetchall()
+    col_names = [row[1] for row in col_check]
+    if 'conversation_id' not in col_names:
+        cursor.execute('ALTER TABLE chat_history ADD COLUMN conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE')
+        # Migrate existing data: group old messages by (user_id, character_id) into default conversations
+        pairs = cursor.execute('''
+            SELECT DISTINCT user_id, character_id FROM chat_history WHERE conversation_id IS NULL
+        ''').fetchall()
+        for pair in pairs:
+            # Create a conversation for this pair's existing history
+            cursor.execute(
+                'INSERT INTO conversations (user_id, character_id, title, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+                (pair['user_id'], pair['character_id'], 'Hội thoại cũ')
+            )
+            conv_id = cursor.lastrowid
+            cursor.execute(
+                'UPDATE chat_history SET conversation_id = ? WHERE user_id = ? AND character_id = ? AND conversation_id IS NULL',
+                (conv_id, pair['user_id'], pair['character_id'])
+            )
+
     conn.commit()
     
     # Add default admin if not exists
