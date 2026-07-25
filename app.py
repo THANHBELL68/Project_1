@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +7,54 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
 from database import get_db_connection, init_db
+
+# Helper function to clean AI response - remove markdown, action descriptions, excessive formatting
+def clean_ai_reply(raw_text: str) -> str:
+    """
+    Clean AI response to remove:
+    - Action descriptions: *action*, **action**, *mim cuoi*, etc.
+    - Markdown formatting: **bold**, *italic*, `code`, ### headers, --- hr
+    - Math notation: $...$, $$...$$
+    - Bullet points starting with *
+    - Excessive newlines
+    """
+    if not raw_text:
+        return ""
+
+    text = raw_text
+
+    # Remove action descriptions in asterisks at line start (e.g., *Mỉm cười...*, **Kẻ hiếu học!**)
+    text = re.sub(r'\n\s*\*{1,2}[^\n\*]{1,80}\*{1,2}\s*\n', '\n', text)
+    text = re.sub(r'^\s*\*{1,2}[^\n\*]{1,80}\*{1,2}\s*\n', '', text, flags=re.MULTILINE)
+
+    # Remove standalone bullet points (lines starting with * that look like actions)
+    text = re.sub(r'^\s*\*\s+[^\n]{1,80}$', '', text, flags=re.MULTILINE)
+
+    # Remove bullet points starting with * or -
+    text = re.sub(r'^[\s]*[\*\-][\s]+', '', text, flags=re.MULTILINE)
+
+    # Remove markdown bold/italic
+    text = re.sub(r'\*{2}([^\*\n]+)\*{2}', r'\1', text)
+    text = re.sub(r'\*{1}([^\*\n]+)\*{1}', r'\1', text)
+
+    # Remove markdown headers ###, ##, ---
+    text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\n\s*---\s*\n', '\n', text)
+
+    # Remove math notation $...$ and $$...$$ (keep content)
+    text = re.sub(r'\$\$([^\$]+)\$\$', r'\1', text)
+    text = re.sub(r'\$([^\$]+)\$', r'\1', text)
+
+    # Remove backticks
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+
+    # Clean excessive newlines (max 2)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    # Strip
+    text = text.strip()
+
+    return text
 
 # Load environment variables
 load_dotenv()
@@ -221,6 +270,8 @@ def handle_chat():
             )
 
             ai_reply = response.choices[0].message.content
+            # Clean markdown, action descriptions from AI response
+            ai_reply = clean_ai_reply(ai_reply)
         except Exception as e:
             print(f"NIM API Error: {str(e)}")
             ai_reply = f"Thực xin lỗi, ta đang gặp chút khó khăn khi kết nối với tinh tú vũ trụ (Lỗi kết nối AI: {str(e)}). Ngươi hãy hỏi lại sau nhé!"
