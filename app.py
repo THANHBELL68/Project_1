@@ -1,11 +1,18 @@
 import os
 import re
+import asyncio
+import hashlib
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+import tempfile
+import time
+from io import BytesIO
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
+from gtts import gTTS
+import edge_tts
 from database import get_db_connection, init_db
 
 # Helper function to clean AI response - remove markdown, action descriptions, excessive formatting
@@ -93,7 +100,7 @@ def is_admin():
 # Middleware to check auth
 @app.before_request
 def require_login():
-    allowed_routes = ['login', 'register', 'static']
+    allowed_routes = ['login', 'register', 'static', 'tts']
     if request.endpoint and request.endpoint not in allowed_routes and not is_logged_in():
         return redirect(url_for('login'))
 
@@ -364,7 +371,57 @@ def get_topic(topic_id):
         'lecture_content': topic['lecture_content']
     })
 
-# Audio TTS (Mock / Google Cloud TTS fallback)
+# ── TTS cache directory ──
+TTS_CACHE_DIR = os.path.join(tempfile.gettempdir(), 'history_voyage_tts')
+os.makedirs(TTS_CACHE_DIR, exist_ok=True)
+
+# Vietnamese neural voice from Microsoft Edge TTS
+EDGE_TTS_VOICE = 'vi-VN-NamMinhNeural'  # Alternate: vi-VN-HoaiMyNeural (Female)
+
+
+def _text_to_speech_edge(text: str) -> BytesIO | None:
+    """
+    Generate TTS audio via Microsoft Edge TTS (neural Vietnamese voice).
+    Returns BytesIO with MP3 data, or None on failure.
+    """
+    try:
+        communicate = edge_tts.Communicate(text=text, voice=EDGE_TTS_VOICE)
+        buf = BytesIO()
+
+        async def _stream():
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    buf.write(chunk["data"])
+
+        asyncio.run(_stream())
+        buf.seek(0)
+
+        if buf.getbuffer().nbytes == 0:
+            return None
+        return buf
+
+    except Exception as e:
+        print(f"edge-tts error: {e}")
+        return None
+
+
+def _text_to_speech_audio_gtts(text: str) -> BytesIO | None:
+    """
+    Generate TTS audio via gTTS (Google) — fallback.
+    Returns BytesIO with MP3 data, or None on failure.
+    """
+    try:
+        tts = gTTS(text=text, lang='vi', slow=False)
+        buf = BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        return buf
+    except Exception as e:
+        print(f"gTTS error: {e}")
+        return None
+
+
+# Audio TTS — edge-tts primary, gTTS fallback, then browser Web Speech API
 @app.route('/tts', methods=['POST'])
 def text_to_speech():
     data = request.json
@@ -373,12 +430,31 @@ def text_to_speech():
     if not text:
         return jsonify({'error': 'Không có văn bản.'}), 400
 
-    # Standard fallback tells the client to use Web Speech API (Frontend JavaScript)
-    # This is highly efficient and works out of the box.
-    return jsonify({
-        'use_web_speech_api': True,
-        'message': 'Sử dụng Web Speech API trên trình duyệt.'
-    })
+    # Cache key: text hash + voice name (so different voices produce different cache files)
+    voice_key = EDGE_TTS_VOICE
+    key_raw = f'{text}|{voice_key}'
+    text_hash = hashlib.md5(key_raw.encode('utf-8')).hexdigest()
+    cache_path = os.path.join(TTS_CACHE_DIR, f'{text_hash}.mp3')
+
+    if not os.path.exists(cache_path):
+        audio_buf = None
+
+        # 1. Try edge-tts (neural Vietnamese — best quality)
+        audio_buf = _text_to_speech_edge(text)
+
+        # 2. Fallback to gTTS
+        if not audio_buf:
+            audio_buf = _text_to_speech_audio_gtts(text)
+
+        # 3. Both failed — tell client to use browser Web Speech API
+        if not audio_buf:
+            return jsonify({'use_web_speech_api': True,
+                            'message': 'Cả edge-tts và gTTS đều không khả dụng. Dùng browser TTS.'}), 503
+
+        with open(cache_path, 'wb') as f:
+            f.write(audio_buf.read())
+
+    return send_file(cache_path, mimetype='audio/mpeg')
 
 # ── Conversation Management APIs ──
 
@@ -496,7 +572,6 @@ def add_character():
     if avatar_file and avatar_file.filename:
         filename = secure_filename(avatar_file.filename)
         # Unique filename using id or random suffix is recommended, let's prefix it
-        import time
         filename = f"{int(time.time())}_{filename}"
         avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         avatar_url = f'/static/uploads/{filename}'
@@ -537,7 +612,6 @@ def edit_character(char_id):
     avatar_url = character['avatar_url']
     if avatar_file and avatar_file.filename:
         filename = secure_filename(avatar_file.filename)
-        import time
         filename = f"{int(time.time())}_{filename}"
         avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         avatar_url = f'/static/uploads/{filename}'

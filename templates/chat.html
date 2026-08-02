@@ -12,6 +12,17 @@
     <div class="col-lg-3">
         <div class="glass-panel text-center h-100 d-flex flex-column justify-content-between">
             <div>
+                <!-- Permission Status Banner -->
+                <div class="permission-banner" id="permissionBanner" style="display:none;">
+                    <div class="permission-banner-inner">
+                        <i class="fa-solid fa-triangle-exclamation" id="permissionIcon"></i>
+                        <span id="permissionText"></span>
+                    </div>
+                    <button class="permission-banner-action" id="permissionActionBtn" onclick="openPermissionGuide()">
+                        <i class="fa-solid fa-gear"></i> Hướng dẫn
+                    </button>
+                </div>
+
                 <!-- Character Avatar / Video Container -->
                 <div class="avatar-large-container mb-3 mx-auto">
                     {% if character.avatar_url %}
@@ -47,7 +58,19 @@
                     <button class="voice-btn-circular" id="stopSpeechBtn" title="Dừng đọc">
                         <i class="fa-solid fa-square"></i>
                     </button>
+                    <button class="voice-btn-circular" id="rateToggleBtn" title="Tốc độ đọc: 1x">
+                        <span id="rateLabel" style="font-size: 0.6rem; font-weight: 700;">1x</span>
+                    </button>
                 </div>
+
+                <!-- STT listening indicator -->
+                <div class="stt-listening-indicator" id="sttListeningIndicator">
+                    <div class="stt-pulse-dot"></div>
+                    <span>🎤 Đang lắng nghe...</span>
+                </div>
+
+                <!-- Hidden audio element for server-side TTS -->
+                <audio id="ttsAudio" style="display:none"></audio>
             </div>
 
             <!-- Timeline (Dòng Kiến Thức) -->
@@ -170,8 +193,37 @@
 </div>
 {% endblock %}
 
+<!-- Permission Guide Modal -->
+<div class="permission-guide-overlay" id="permissionGuideOverlay" style="display:none;" onclick="closePermissionGuide(event)">
+    <div class="permission-guide-modal" onclick="event.stopPropagation()">
+        <div class="permission-guide-header">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Hướng dẫn mở khóa quyền</span>
+            <button class="permission-guide-close" onclick="closePermissionGuide()">&times;</button>
+        </div>
+        <div class="permission-guide-body">
+            <div class="permission-guide-step">
+                <strong>1. Mở Cài đặt trình duyệt</strong>
+                <p>Copy link và dán vào thanh địa chỉ:</p>
+                <code id="permSettingsUrl" style="cursor:pointer; color:var(--neon-cyan);" onclick="copyPermissionLink()"></code>
+            </div>
+            <div class="permission-guide-step">
+                <strong>2. Tìm mục Microphone</strong>
+                <p>Tìm <em>localhost</em> hoặc <em>127.0.0.1</em> trong danh sách → Chọn <strong>"Cho phép"</strong></p>
+            </div>
+            <div class="permission-guide-step">
+                <strong>3. Tải lại trang</strong>
+                <p>Nhấn F5 hoặc nút bên dưới:</p>
+                <button class="voice-btn-circular" onclick="location.reload()" style="width:auto; border-radius:10px; padding:0.5rem 1.2rem; margin-top:0.5rem;">
+                    <i class="fa-solid fa-rotate"></i> Tải lại trang
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block extra_js %}
-<!-- Pass character specific details to JS -->
+<!-- Pass character specific details to chat -->
 <script>
     const CHARACTER_ID = {{ character.id }};
     const CHARACTER_NAME = "{{ character.name }}";

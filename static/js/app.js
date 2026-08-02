@@ -6,6 +6,164 @@ let recognition = null;
 let currentActiveTopicId = null;
 let currentConversationId = ACTIVE_CONVERSATION_ID || null;
 let cachedVoices = [];
+let speechRate = 1.0; // 1.0 = normal, 1.5 = fast
+let isListening = false; // STT listening state
+let audioUnlocked = false; // AudioContext warmup flag
+
+/**
+ * Unlock browser audio playback on first user interaction.
+ * Chrome blocks audio.play() until the user has interacted with the page.
+ * Call this on any user gesture (click, keypress, touch).
+ */
+function unlockAudio() {
+    if (audioUnlocked) return;
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        // Create a silent buffer and play it to "warm up" the audio context
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        // Resume suspended context (required on some browsers)
+        if (ctx.state === 'suspended') ctx.resume();
+        audioUnlocked = true;
+        console.log('Audio context unlocked for autoplay.');
+        hidePermissionBanner();
+    } catch (e) {
+        console.warn('Could not unlock audio context:', e);
+    }
+}
+
+/**
+ * Check microphone permission status and show a banner if blocked or uncertain.
+ */
+async function checkMicPermission() {
+    // Also try: check if SpeechRecognition exists at all
+    const hasSpeechApi = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    if (!hasSpeechApi) {
+        // Browser doesn't support SpeechRecognition at all — hide mic and warn
+        console.warn('SpeechRecognition API not available in this browser.');
+        const micBtn = document.getElementById("micBtn");
+        if (micBtn) micBtn.style.opacity = '0.4';
+        showPermissionBanner('unsupported', false);
+        return;
+    }
+
+    let micState = 'unknown';
+
+    try {
+        // Permissions API (Chrome/Edge)
+        const micStatus = await navigator.permissions.query({ name: 'microphone' });
+        micState = micStatus.state; // 'granted', 'denied', or 'prompt'
+
+        // Listen for changes
+        micStatus.onchange = () => {
+            if (micStatus.state === 'granted') {
+                hidePermissionBanner();
+            } else {
+                showPermissionBanner(micStatus.state, hasSpeechApi);
+            }
+        };
+    } catch (e) {
+        // Permissions API not available (Firefox, Safari) — do a quick STT test
+        console.log('Permissions API not available, trying quick STT availability check...');
+        try {
+            const testRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            // Recognition created successfully — mic should work on request
+            console.log('SpeechRecognition available — mic permission will be prompted on use.');
+        } catch (err) {
+            console.warn('SpeechRecognition constructor failed:', err);
+            showPermissionBanner('denied', true);
+            return;
+        }
+    }
+
+    if (micState === 'denied') {
+        showPermissionBanner('denied', hasSpeechApi);
+    } else if (micState === 'unknown') {
+        // Permissions API not available but STT exists (e.g., Firefox) — mic will prompt
+        console.log('Microphone permission status unknown — browser will prompt on first use.');
+    }
+}
+
+/**
+ * Show the permission warning banner.
+ * @param {string} state - 'denied' | 'prompt'
+ * @param {boolean} hasSpeechApi - Whether SpeechRecognition exists
+ */
+function showPermissionBanner(state, hasSpeechApi) {
+    const banner = document.getElementById('permissionBanner');
+    const icon = document.getElementById('permissionIcon');
+    const text = document.getElementById('permissionText');
+    if (!banner || !text) return;
+
+    if (state === 'denied') {
+        icon.className = 'fa-solid fa-circle-xmark';
+        text.textContent = 'Micro bị chặn. Vào cài đặt trình duyệt để mở khóa quyền truy cập Microphone.';
+    } else if (state === 'unsupported' || !hasSpeechApi) {
+        icon.className = 'fa-solid fa-triangle-exclamation';
+        text.textContent = 'Trình duyệt không hỗ trợ nhận dạng giọng nói. Vui lòng dùng Chrome hoặc Edge.';
+    }
+
+    banner.style.display = 'flex';
+}
+
+/**
+ * Hide the permission warning banner.
+ */
+function hidePermissionBanner() {
+    const banner = document.getElementById('permissionBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+/**
+ * Open the permission help guide modal (detects browser and shows relevant link).
+ */
+function openPermissionGuide() {
+    const overlay = document.getElementById('permissionGuideOverlay');
+    const settingsUrl = document.getElementById('permSettingsUrl');
+
+    // Detect browser and show the right settings URL
+    const ua = navigator.userAgent;
+    if (ua.includes('Edg')) {
+        settingsUrl.textContent = 'edge://settings/content/microphone';
+    } else if (ua.includes('Chrome')) {
+        settingsUrl.textContent = 'chrome://settings/content/microphone';
+    } else if (ua.includes('Firefox')) {
+        settingsUrl.textContent = 'about:preferences#privacy';
+    } else {
+        settingsUrl.textContent = 'Vào Cài đặt trình duyệt > Quyền riêng tư > Micro';
+    }
+
+    if (overlay) overlay.style.display = 'flex';
+}
+
+/**
+ * Close the permission guide modal. If event is provided, only close when clicking overlay.
+ */
+function closePermissionGuide(event) {
+    if (event && event.target !== document.getElementById('permissionGuideOverlay')) return;
+    const overlay = document.getElementById('permissionGuideOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+/**
+ * Copy the browser settings URL to clipboard.
+ */
+function copyPermissionLink() {
+    const codeEl = document.getElementById('permSettingsUrl');
+    if (!codeEl) return;
+    const url = codeEl.textContent;
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('Đã copy link. Dán vào thanh địa chỉ trình duyệt để mở cài đặt.', 'success');
+    }).catch(() => {
+        showToast('Không thể copy. Hãy mở thủ công: ' + url, 'info');
+    });
+}
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -89,83 +247,6 @@ function createChatMessage(message, senderName, senderType, useTypewriter = fals
     return wrapper;
 }
 
-/**
- * Run typewriter effect for character messages with formatting support
- * @param {string} text - The message text
- * @param {string} senderName - Sender name
- * @param {HTMLElement} container - Messages container
- */
-function runTypewriter(text, senderName, container) {
-    const messageWrapper = document.createElement('div');
-    messageWrapper.className = 'chat-message';
-
-    const avatar = document.createElement('img');
-    avatar.className = 'chat-avatar';
-    avatar.src = '/static/images/default_avatar.png';
-    avatar.alt = senderName;
-
-    const bubbleWrapper = document.createElement('div');
-    bubbleWrapper.className = 'chat-bubble-wrapper';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'chat-bubble character';
-
-    const meta = document.createElement('div');
-    meta.className = 'chat-bubble-meta';
-    meta.textContent = senderName;
-
-    bubbleWrapper.appendChild(bubble);
-    bubbleWrapper.appendChild(meta);
-    messageWrapper.appendChild(avatar);
-    messageWrapper.appendChild(bubbleWrapper);
-    container.appendChild(messageWrapper);
-    container.scrollTop = container.scrollHeight;
-
-    // Format the text first (with HTML)
-    const formattedHtml = formatMessage(text);
-
-    // Typewriter effect for HTML content - type character by character
-    // But we need to handle HTML tags properly
-    let i = 0;
-    let displayText = '';
-    let isInTag = false;
-    let tagBuffer = '';
-
-    function typeChar() {
-        if (i < formattedHtml.length) {
-            const char = formattedHtml[i];
-
-            if (char === '<') {
-                isInTag = true;
-                tagBuffer = '<';
-            } else if (char === '>' && isInTag) {
-                isInTag = false;
-                tagBuffer += '>';
-                displayText += tagBuffer;
-                bubble.innerHTML = displayText;
-                tagBuffer = '';
-            } else if (isInTag) {
-                tagBuffer += char;
-            } else {
-                displayText += char;
-                bubble.innerHTML = displayText;
-            }
-
-            container.scrollTop = container.scrollHeight;
-            i++;
-
-            // Faster typing for more natural feel
-            const delay = isInTag ? 0 : (15 + Math.random() * 30);
-            setTimeout(typeChar, delay);
-        } else {
-            // Typing complete
-            showSuggestions(currentActiveTopicId);
-        }
-    }
-
-    typeChar();
-}
-
 // Pool of suggested questions based on topics
 const topicSuggestions = {
     // Einstein: Hiệu ứng quang điện
@@ -214,49 +295,107 @@ function initRecognition() {
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.continuous = false;
-        recognition.lang = 'vi-VN';
-        recognition.interimResults = false;
+        recognition.interimResults = true;   // Show partial results while speaking
         recognition.maxAlternatives = 1;
+
+        // Try vi-VN first; if it fails, try without specifying lang
+        try {
+            recognition.lang = 'vi-VN';
+        } catch (e) {
+            console.warn('vi-VN not supported, using browser default language.');
+            recognition.lang = '';
+        }
 
         recognition.onstart = () => {
             console.log("Voice recognition started...");
+            isListening = true;
             const micBtn = document.getElementById("micBtn");
             const micIcon = document.getElementById("micIcon");
-            micBtn.classList.add("active-rec");
-            micIcon.className = "fa-solid fa-microphone-lines";
+            const input = document.getElementById("chatInput");
+            if (micBtn) micBtn.classList.add("active-rec");
+            if (micIcon) micIcon.className = "fa-solid fa-microphone-lines";
+
+            // Show listening indicator
+            const indicator = document.getElementById("sttListeningIndicator");
+            if (indicator) indicator.classList.add("active");
+
+            // Change input visual
+            if (input) {
+                input.classList.add("listening");
+                input.placeholder = "🎤 Đang lắng nghe...";
+            }
         };
 
         recognition.onresult = (event) => {
             const resultText = event.results[0][0].transcript;
-            console.log("STT Result:", resultText);
-            document.getElementById("chatInput").value = resultText;
-            // Send message automatically
-            sendMessage();
+            const isFinal = event.results[0].isFinal;
+            console.log("STT Result:", resultText, isFinal ? "(final)" : "(interim)");
+
+            const input = document.getElementById("chatInput");
+            if (input) input.value = resultText;
+
+            // Send message automatically on final result
+            if (isFinal) {
+                sendMessage();
+            }
         };
 
         recognition.onerror = (event) => {
-            console.error("STT Error:", event.error);
-            showToast("Không nhận dạng được giọng nói hoặc micro bị từ chối.", "danger");
+            console.error("STT Error:", event.error, event.message || '');
+
+            const errorMsg = {
+                'not-allowed': 'Micro bị từ chối. Vào Cài đặt trình duyệt > Quyền riêng tư > Micro để cấp quyền.',
+                'no-speech': 'Không phát hiện giọng nói. Hãy thử lại và nói to hơn.',
+                'audio-capture': 'Không tìm thấy microphone. Vui lòng kiểm tra thiết bị.',
+                'network': 'Lỗi kết nối mạng khi nhận dạng giọng nói.',
+                'aborted': 'Đã dừng ghi âm.',
+                'language-not-supported': 'Ngôn ngữ tiếng Việt không được trình duyệt hỗ trợ nhận dạng giọng nói. Vui lòng nhập văn bản.'
+            }[event.error] || `Lỗi nhận dạng giọng nói: ${event.error}`;
+
+            showToast(errorMsg, "danger");
             resetMicButton();
+
+            if (event.error === 'not-allowed') {
+                // Show the permission banner and guide
+                showPermissionBanner('denied', true);
+            } else if (event.error === 'language-not-supported') {
+                // Fallback: try without specifying language
+                console.log('Retrying STT without language restriction...');
+                try {
+                    recognition.lang = '';
+                } catch (e) {}
+            }
         };
 
         recognition.onend = () => {
             console.log("Voice recognition ended.");
+            isListening = false;
             resetMicButton();
         };
     } else {
         console.warn("Web Speech Recognition API not supported in this browser.");
-        document.getElementById("micBtn").style.display = "none";
+        const micBtn = document.getElementById("micBtn");
+        if (micBtn) micBtn.style.display = "none";
+        showToast("Trình duyệt của bạn không hỗ trợ nhận dạng giọng nói. Vui lòng sử dụng Chrome, Edge hoặc nhập văn bản.", "danger");
     }
 }
 
 function resetMicButton() {
     const micBtn = document.getElementById("micBtn");
     const micIcon = document.getElementById("micIcon");
+    const input = document.getElementById("chatInput");
+    const indicator = document.getElementById("sttListeningIndicator");
+
     if (micBtn && micIcon) {
         micBtn.classList.remove("active-rec");
         micIcon.className = "fa-solid fa-microphone";
     }
+    if (indicator) indicator.classList.remove("active");
+    if (input) {
+        input.classList.remove("listening");
+        input.placeholder = "Nhập câu hỏi hoặc nhấn Micro để nói...";
+    }
+    isListening = false;
 }
 
 // Helper to show custom toast
@@ -280,33 +419,201 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 
+// Cached best Vietnamese voice for Web Speech API
+let cachedViVoice = null;
+
 // Pre-load voices (fix async cold-load bug)
 function loadVoices() {
     return new Promise((resolve) => {
         const voices = synthesis.getVoices();
         if (voices.length > 0) {
             cachedVoices = voices;
+            cachedViVoice = findBestViVoice(cachedVoices);
             resolve(voices);
         } else {
             synthesis.onvoiceschanged = () => {
                 cachedVoices = synthesis.getVoices();
+                cachedViVoice = findBestViVoice(cachedVoices);
                 resolve(cachedVoices);
             };
         }
     });
 }
 
-// Speak text using TTS
-function speakText(text) {
-    if (isMuted || !synthesis) return;
+/**
+ * Find the best Vietnamese voice from the available voices.
+ * Prefers Microsoft/Google neural voices over generic ones.
+ */
+function findBestViVoice(voices) {
+    if (!voices || voices.length === 0) return null;
 
-    // Stop any ongoing speech
-    synthesis.cancel();
+    // Priority 1: vi-VN neural/local voices with "NamMinh" or "HoaiMy" (Microsoft neural)
+    const neuralVoice = voices.find(v =>
+        v.lang === 'vi-VN' &&
+        (v.name.includes('Microsoft') || v.name.includes('Natural') || v.name.includes('Neural'))
+    );
+    if (neuralVoice) return neuralVoice;
+
+    // Priority 2: vi-VN Google voices
+    const googleVoice = voices.find(v =>
+        v.lang === 'vi-VN' && v.name.toLowerCase().includes('google')
+    );
+    if (googleVoice) return googleVoice;
+
+    // Priority 3: any vi-VN voice
+    const viVNVoice = voices.find(v => v.lang === 'vi-VN' || v.lang.startsWith('vi-VN'));
+    if (viVNVoice) return viVNVoice;
+
+    // Priority 4: any vi voice
+    const viVoice = voices.find(v => v.lang.startsWith('vi'));
+    if (viVoice) return viVoice;
+
+    return null;
+}
+
+// Speak text using TTS — server-side edge-tts MP3 first, then gTTS, fallback to Web Speech API
+async function speakText(text) {
+    if (isMuted) return;
 
     // Clean markdown formatting before speaking
-    const cleanText = text.replace(/[*#`_\[\]()]/g, '');
+    const cleanText = cleanTextForTTS(text);
+    if (!cleanText) return;
 
-    // Web Speech Synthesis limits the size of text. Let's split by sentences.
+    // Stop any ongoing speech (both server audio and browser synthesis)
+    if (synthesis) synthesis.cancel();
+    const existingAudio = document.getElementById('ttsAudio');
+    if (existingAudio) {
+        existingAudio.pause();
+        existingAudio.currentTime = 0;
+    }
+
+    // Try server-side TTS (edge-tts → gTTS) first
+    const { audioUrl, originalText } = await fetchServerTTS(cleanText);
+
+    if (audioUrl) {
+        // Server audio ready — play via <audio> element, with Web Speech fallback on error
+        playServerAudio(audioUrl, cleanText);
+    } else {
+        // Fallback to browser Web Speech API
+        speakWithWebSpeech(cleanText);
+    }
+}
+
+/**
+ * Clean text for TTS — selectively remove markdown formatting,
+ * preserving legitimate punctuation like () [] % etc.
+ */
+function cleanTextForTTS(text) {
+    if (!text) return '';
+
+    let cleaned = text;
+
+    // Remove bold **text** or __text__
+    cleaned = cleaned.replace(/\*{2}([^*\n]+)\*{2}/g, '$1');
+    cleaned = cleaned.replace(/__([^_\n]+)__/g, '$1');
+
+    // Remove italic *text* or _text_
+    cleaned = cleaned.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1');
+    cleaned = cleaned.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '$1');
+
+    // Remove markdown links [text](url) → keep text
+    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    // Remove headers ###, ##, #
+    cleaned = cleaned.replace(/^#{1,6}\s*/gm, '');
+
+    // Remove horizontal rules ---, ***, ___
+    cleaned = cleaned.replace(/^[\s]*[-*_]{3,}[\s]*$/gm, '');
+
+    // Remove inline code `text`
+    cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+
+    // Remove math notation $...$ and $$...$$ (keep content)
+    cleaned = cleaned.replace(/\$\$([^$]+)\$\$/g, '$1');
+    cleaned = cleaned.replace(/\$([^$]+)\$/g, '$1');
+
+    // Remove action descriptions *text* (standalone asterisk actions)
+    cleaned = cleaned.replace(/^\*[^*\n]+\*$/gm, '');
+
+    // Collapse excessive whitespace
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.trim();
+
+    return cleaned;
+}
+
+/**
+ * Fetch server-side TTS audio via /tts endpoint.
+ * Uses edge-tts (neural Vietnamese) with gTTS fallback on server.
+ * Returns { audioUrl, originalText } or { audioUrl: null, originalText }.
+ */
+async function fetchServerTTS(text) {
+    try {
+        const response = await fetch('/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            return { audioUrl: URL.createObjectURL(blob), originalText: text };
+        }
+    } catch (e) {
+        console.log('Server TTS unavailable, falling back to Web Speech API.');
+    }
+    return { audioUrl: null, originalText: text };
+}
+
+/**
+ * Play server-side TTS audio through the <audio> element.
+ * Falls back to Web Speech API on playback error.
+ * @param {string} audioUrl - Blob URL of the TTS audio
+ * @param {string} cleanText - Original cleaned text for Web Speech API fallback
+ */
+function playServerAudio(audioUrl, cleanText) {
+    const audio = document.getElementById('ttsAudio');
+    if (!audio) return;
+
+    // Stop any currently playing audio
+    audio.pause();
+    audio.currentTime = 0;
+
+    audio.src = audioUrl;
+    audio.onplay = () => startVisuals();
+    audio.onended = () => {
+        stopVisuals();
+        URL.revokeObjectURL(audioUrl);
+    };
+    audio.onerror = () => {
+        console.warn('Server audio playback failed, falling back to Web Speech API.');
+        stopVisuals();
+        URL.revokeObjectURL(audioUrl);
+        // Fallback to browser Web Speech API with the original text
+        if (cleanText) {
+            speakWithWebSpeech(cleanText);
+        }
+    };
+    audio.play().catch(err => {
+        console.warn('Audio play() rejected:', err);
+        stopVisuals();
+        // Fallback to browser TTS on play() rejection too
+        if (cleanText) {
+            speakWithWebSpeech(cleanText);
+        }
+    });
+}
+
+/**
+ * Web Speech API fallback for TTS.
+ */
+function speakWithWebSpeech(cleanText) {
+    if (!synthesis) {
+        console.warn('Web Speech API not available.');
+        return;
+    }
+
+    // Split text into sentences for better speech synthesis
     const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
     let currentIndex = 0;
 
@@ -325,28 +632,23 @@ function speakText(text) {
 
         currentUtterance = new SpeechSynthesisUtterance(sentence);
         currentUtterance.lang = 'vi-VN';
+        currentUtterance.rate = speechRate;
 
-        // Select a Vietnamese voice if available (from cache)
-        const viVoice = cachedVoices.find(voice => voice.lang.includes('vi-VN'));
-        if (viVoice) {
-            currentUtterance.voice = viVoice;
-        } else if (cachedVoices.length > 0) {
-            // No Vietnamese voice found — try to use any voice with lang=vi-VN, browser may choose best fallback
-            console.warn('Không tìm thấy giọng tiếng Việt (vi-VN) trong danh sách voices. Văn bản có thể không được đọc đúng.');
+        // Select best Vietnamese voice if available (pre-cached)
+        if (cachedViVoice) {
+            currentUtterance.voice = cachedViVoice;
         }
 
-        currentUtterance.onstart = () => {
-            startVisuals();
-        };
-
+        currentUtterance.onstart = () => startVisuals();
         currentUtterance.onend = () => {
             currentIndex++;
             speakNext();
         };
-
         currentUtterance.onerror = (e) => {
-            console.error("TTS Utterance error:", e);
-            stopVisuals();
+            console.error('TTS Utterance error:', e);
+            // Continue with next sentence on error instead of stopping completely
+            currentIndex++;
+            speakNext();
         };
 
         synthesis.speak(currentUtterance);
@@ -861,6 +1163,18 @@ async function deleteConversation(convId) {
 
 // Event Listeners setup
 document.addEventListener("DOMContentLoaded", () => {
+    // Audio warmup: unlock autoplay on first user interaction
+    const warmupEvents = ['click', 'keydown', 'touchstart'];
+    function onFirstInteraction() {
+        unlockAudio();
+        // Remove listeners after first successful interaction
+        warmupEvents.forEach(ev => document.removeEventListener(ev, onFirstInteraction));
+    }
+    warmupEvents.forEach(ev => document.addEventListener(ev, onFirstInteraction, { once: false }));
+
+    // Check microphone permission status
+    checkMicPermission();
+
     // Pre-load voices
     loadVoices();
 
@@ -872,6 +1186,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const stopSpeechBtn = document.getElementById("stopSpeechBtn");
     const muteIcon = document.getElementById("muteIcon");
     const newConversationBtn = document.getElementById("newConversationBtn");
+    const rateToggleBtn = document.getElementById("rateToggleBtn");
+    const rateLabel = document.getElementById("rateLabel");
 
     // Click Send
     sendBtn.addEventListener("click", sendMessage);
@@ -895,8 +1211,8 @@ document.addEventListener("DOMContentLoaded", () => {
             showToast("Tính năng ghi âm giọng nói không khả dụng trên trình duyệt của bạn.", "danger");
             return;
         }
-        
-        if (micBtn.classList.contains("active-rec")) {
+
+        if (isListening) {
             recognition.stop();
         } else {
             // Cancel TTS if speaking before recording
@@ -904,17 +1220,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 synthesis.cancel();
                 stopVisuals();
             }
+            // Also stop server audio
+            const audio = document.getElementById('ttsAudio');
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+            }
             recognition.start();
         }
     });
 
-    // Mute/Unmute audio synthesis
+    // Mute/Unmute audio
     toggleMuteBtn.addEventListener("click", () => {
         isMuted = !isMuted;
         if (isMuted) {
-            if (synthesis) {
-                synthesis.cancel();
-            }
+            if (synthesis) synthesis.cancel();
+            const audio = document.getElementById('ttsAudio');
+            if (audio) { audio.pause(); audio.currentTime = 0; }
             stopVisuals();
             muteIcon.className = "fa-solid fa-volume-xmark";
             toggleMuteBtn.classList.add("active-audio");
@@ -928,11 +1250,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Stop speaking altogether
     stopSpeechBtn.addEventListener("click", () => {
-        if (synthesis) {
-            synthesis.cancel();
-        }
+        if (synthesis) synthesis.cancel();
+        const audio = document.getElementById('ttsAudio');
+        if (audio) { audio.pause(); audio.currentTime = 0; }
         stopVisuals();
     });
+
+    // Rate toggle: 1x → 1.5x → 1x
+    if (rateToggleBtn && rateLabel) {
+        rateToggleBtn.addEventListener("click", () => {
+            if (speechRate === 1.0) {
+                speechRate = 1.5;
+                rateLabel.textContent = "1.5x";
+                rateToggleBtn.classList.add("active-audio");
+                showToast("Tốc độ đọc: Nhanh (1.5x)", "info");
+            } else {
+                speechRate = 1.0;
+                rateLabel.textContent = "1x";
+                rateToggleBtn.classList.remove("active-audio");
+                showToast("Tốc độ đọc: Bình thường (1x)", "info");
+            }
+        });
+    }
 
     // Initially trigger general suggested questions
     showSuggestions(null);
