@@ -9,6 +9,7 @@ let cachedVoices = [];
 let speechRate = 1.0; // 1.0 = normal, 1.5 = fast
 let isListening = false; // STT listening state
 let audioUnlocked = false; // AudioContext warmup flag
+let sttSilenceTimeout = null; // Timeout for 5s silence auto-send
 
 /**
  * Unlock browser audio playback on first user interaction.
@@ -294,7 +295,7 @@ function initRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true; // Keep listening until explicitly stopped
         recognition.interimResults = true;   // Show partial results while speaking
         recognition.maxAlternatives = 1;
 
@@ -327,17 +328,28 @@ function initRecognition() {
         };
 
         recognition.onresult = (event) => {
-            const resultText = event.results[0][0].transcript;
-            const isFinal = event.results[0].isFinal;
-            console.log("STT Result:", resultText, isFinal ? "(final)" : "(interim)");
+            let fullTranscript = '';
+            for (let i = 0; i < event.results.length; ++i) {
+                fullTranscript += event.results[i][0].transcript;
+            }
+
+            console.log("STT Result:", fullTranscript);
 
             const input = document.getElementById("chatInput");
-            if (input) input.value = resultText;
+            if (input) input.value = fullTranscript;
 
-            // Send message automatically on final result
-            if (isFinal) {
-                sendMessage();
+            // Reset the 5-second silence timer whenever voice is detected
+            if (sttSilenceTimeout) {
+                clearTimeout(sttSilenceTimeout);
             }
+
+            sttSilenceTimeout = setTimeout(() => {
+                console.log("5s of silence detected. Stopping STT and sending...");
+                recognition.stop();
+                if (input && input.value.trim() !== "") {
+                    sendMessage();
+                }
+            }, 5000);
         };
 
         recognition.onerror = (event) => {
@@ -371,6 +383,10 @@ function initRecognition() {
             console.log("Voice recognition ended.");
             isListening = false;
             resetMicButton();
+            if (sttSilenceTimeout) {
+                clearTimeout(sttSilenceTimeout);
+                sttSilenceTimeout = null;
+            }
         };
     } else {
         console.warn("Web Speech Recognition API not supported in this browser.");
@@ -760,6 +776,11 @@ function createFormattedMessage(text, senderName, container) {
 
 // Function to handle sending message
 async function sendMessage() {
+    if (sttSilenceTimeout) {
+        clearTimeout(sttSilenceTimeout);
+        sttSilenceTimeout = null;
+    }
+
     const input = document.getElementById("chatInput");
     const message = input.value.trim();
     if (!message) return;
