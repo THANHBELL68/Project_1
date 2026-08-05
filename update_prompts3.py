@@ -52,4 +52,6 @@ for char_id in range(3, 10):
 
 conn.commit()
 conn.close()
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
 print('Đã cập nhật tất cả prompt với tiếng Việt có dấu!')
