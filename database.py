@@ -54,7 +54,8 @@ def init_db():
         system_prompt TEXT NOT NULL,
         temperature REAL DEFAULT 0.7,
         era TEXT DEFAULT 'medieval',
-        region TEXT DEFAULT 'vietnam'
+        region TEXT DEFAULT 'vietnam',
+        domain TEXT DEFAULT 'Lịch sử'
     )
     ''')
 
@@ -64,6 +65,8 @@ def init_db():
         cursor.execute("ALTER TABLE characters ADD COLUMN era TEXT DEFAULT 'medieval'")
     if 'region' not in char_cols:
         cursor.execute("ALTER TABLE characters ADD COLUMN region TEXT DEFAULT 'vietnam'")
+    if 'domain' not in char_cols:
+        cursor.execute("ALTER TABLE characters ADD COLUMN domain TEXT DEFAULT 'Lịch sử'")
 
     # Create topics table (Dòng kiến thức)
     cursor.execute('''
@@ -159,24 +162,24 @@ def init_db():
     default_chars = [
         ('An Dương Vương', '/static/images/an_duong_vuong.png',
          'Bạn là An Dương Vương Thục Phán, vị vua lập ra nước Âu Lạc, xây đắp thành Cổ Loa 9 xoáy ốc và sở hữu truyền thuyết Nỏ Thần Thần Quang. Hãy trò chuyện với học sinh bằng thái độ hiền minh, trầm tư, đúc kết các bài học lịch sử sâu sắc về sự cảnh giác và tinh thần xây dựng đất nước.',
-         0.6, 'ancient', 'vietnam'),
+         0.6, 'ancient', 'vietnam', 'Lịch sử'),
         ('Socrates', '/static/images/socrates.png',
          'Bạn là Socrates, nhà triết học cổ đại Hy Lạp vĩ đại. Hãy dùng phương pháp vấn đáp (Socratic method) để đặt ra các câu hỏi kích thích tư duy học sinh về tri thức, đạo đức và công lý. Xưng hô là "Ta" và gọi học sinh là "bạn trẻ".',
-         0.7, 'ancient', 'world'),
+         0.7, 'ancient', 'world', 'Triết học'),
         ('Leonardo da Vinci', '/static/images/davinci.png',
          'Bạn là Leonardo da Vinci, thiên tài toàn năng thời Phục Hưng nước Ý, họa sĩ vẽ bức Mona Lisa và tác giả của hàng trăm phát minh khoa học đi trước thời đại. Hãy trò chuyện tràn đầy cảm hứng sáng tạo và đam mê khám phá thiên nhiên.',
-         0.7, 'medieval', 'world'),
+         0.7, 'medieval', 'world', 'Nghệ thuật & Sáng chế'),
         ('Võ Nguyên Giáp', '/static/images/vo_nguyen_giap.png',
          'Bạn là Đại tướng Võ Nguyên Giáp, Tổng tư lệnh Quân đội Nhân dân Việt Nam, người anh cả của QĐNDVN, chỉ huy Chiến dịch Điện Biên Phủ lừng lẫy 5 châu. Hãy trò chuyện với học sinh bằng giọng nói ấm áp, điềm tĩnh, đề cao tinh thần yêu nước và sức mạnh đoàn kết toàn dân.',
-         0.6, 'modern', 'vietnam')
+         0.6, 'modern', 'vietnam', 'Quân sự / Chiến lược')
     ]
 
     for char_data in default_chars:
         cursor.execute('SELECT id FROM characters WHERE name = ?', (char_data[0],))
         if not cursor.fetchone():
             cursor.execute('''
-            INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region, domain)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', char_data)
 
     conn.commit()

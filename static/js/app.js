@@ -596,6 +596,7 @@ function playServerAudio(audioUrl, cleanText) {
     audio.currentTime = 0;
 
     audio.src = audioUrl;
+    audio.playbackRate = speechRate; // Apply global speech rate
     audio.onplay = () => startVisuals();
     audio.onended = () => {
         stopVisuals();
@@ -1290,6 +1291,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 rateLabel.textContent = "1x";
                 rateToggleBtn.classList.remove("active-audio");
                 showToast("Tốc độ đọc: Bình thường (1x)", "info");
+            }
+            
+            // Apply immediately to currently playing audio if any
+            const audio = document.getElementById('ttsAudio');
+            if (audio && !audio.paused) {
+                audio.playbackRate = speechRate;
             }
         });
     }

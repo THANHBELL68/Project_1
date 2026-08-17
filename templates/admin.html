@@ -27,7 +27,7 @@
                         <tr>
                             <th>Ảnh</th>
                             <th>Tên nhân vật</th>
-                            <th>Thời kỳ & Khu vực</th>
+                            <th>Lĩnh vực, Thời kỳ & Khu vực</th>
                             <th>System Prompt (Tính cách AI)</th>
                             <th>Nhiệt độ</th>
                             <th>Dòng kiến thức</th>
@@ -51,6 +51,9 @@
                                     </span>
                                     <span class="badge bg-dark border border-info text-info">
                                         {% if char.region == 'vietnam' %}Việt Nam{% else %}Thế Giới{% endif %}
+                                    </span>
+                                    <span class="badge bg-dark border border-success text-success mt-1 d-inline-block">
+                                        <i class="fa-solid fa-layer-group"></i> {{ char.domain }}
                                     </span>
                                 </td>
                                 <td>
@@ -85,7 +88,7 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-primary" onclick="openEditCharModal({{ char.id }}, '{{ char.name | replace("'", "\\'") }}', '{{ char.system_prompt | replace("\n", "\\n") | replace("'", "\\'") }}', {{ char.temperature }}, '{{ char.era }}', '{{ char.region }}')">
+                                        <button class="btn btn-sm btn-outline-info" onclick="openEditCharModal({{ char.id }}, '{{ char.name | escape }}', '{{ char.system_prompt | escape | replace('\n', '\\n') }}', {{ char.temperature }}, '{{ char.era }}', '{{ char.region }}', '{{ char.domain | escape }}')">
                                             <i class="fa-solid fa-pen"></i> Sửa
                                         </button>
                                         <form action="{{ url_for('delete_character', char_id=char.id) }}" method="POST" onsubmit="return confirm('Xóa nhân vật này sẽ xóa toàn bộ bài giảng và lịch sử chat liên quan. Bạn có chắc chắn?')">
@@ -140,6 +143,11 @@
                                 <option value="vietnam" selected>Việt Nam</option>
                                 <option value="world">Thế Giới</option>
                             </select>
+                        </div>
+                        </div>
+                        <div class="col-md-12 mt-3">
+                            <label for="domain" class="form-label text-secondary fw-semibold">Lĩnh vực chuyên môn</label>
+                            <input type="text" class="form-control auth-form-input" id="domain" name="domain" value="Lịch sử" required>
                         </div>
                     </div>
 
@@ -197,6 +205,10 @@
                                 <option value="vietnam">Việt Nam</option>
                                 <option value="world">Thế Giới</option>
                             </select>
+                        </div>
+                        <div class="col-md-12 mt-3">
+                            <label for="edit_domain" class="form-label text-secondary fw-semibold">Lĩnh vực chuyên môn</label>
+                            <input type="text" class="form-control auth-form-input" id="edit_domain" name="domain" required>
                         </div>
                     </div>
 

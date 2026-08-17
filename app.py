@@ -539,6 +539,9 @@ def handle_chat():
 
     # Build System Prompt and Context
     system_prompt = character['system_prompt']
+    
+    # Strict boundary prompt to keep the character in their domain
+    system_prompt += "\n\n[QUY TẮC BẮT BUỘC]: Bạn CHỈ ĐƯỢC PHÉP trả lời các câu hỏi liên quan đến lĩnh vực chuyên môn, thời đại lịch sử, hoặc cuộc đời của bạn. Nếu người dùng hỏi những vấn đề không liên quan (ví dụ: công nghệ tương lai, bóng đá, giải trí hiện đại, hoặc các lĩnh vực hoàn toàn nằm ngoài kiến thức của bạn), BẮT BUỘC phải từ chối trả lời một cách khéo léo theo đúng tính cách của nhân vật, và hướng người dùng quay lại đúng chủ đề."
 
     # If the user selected a topic, we append the topic context to the prompt
     topic_context = ""
@@ -808,6 +811,7 @@ def add_character():
     temperature = float(request.form.get('temperature', 0.7))
     era = request.form.get('era', 'medieval').strip()
     region = request.form.get('region', 'vietnam').strip()
+    domain = request.form.get('domain', 'Lịch sử').strip()
     avatar_file = request.files.get('avatar')
 
     if not name or not system_prompt:
@@ -825,9 +829,9 @@ def add_character():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (name, avatar_url, system_prompt, temperature, era, region))
+        INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region, domain)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (name, avatar_url, system_prompt, temperature, era, region, domain))
     conn.commit()
     conn.close()
 
@@ -844,6 +848,7 @@ def edit_character(char_id):
     temperature = float(request.form.get('temperature', 0.7))
     era = request.form.get('era', 'medieval').strip()
     region = request.form.get('region', 'vietnam').strip()
+    domain = request.form.get('domain', 'Lịch sử').strip()
     avatar_file = request.files.get('avatar')
 
     if not name or not system_prompt:
@@ -866,9 +871,9 @@ def edit_character(char_id):
 
     conn.execute('''
         UPDATE characters
-        SET name = ?, avatar_url = ?, system_prompt = ?, temperature = ?, era = ?, region = ?
+        SET name = ?, avatar_url = ?, system_prompt = ?, temperature = ?, era = ?, region = ?, domain = ?
         WHERE id = ?
-    ''', (name, avatar_url, system_prompt, temperature, era, region, char_id))
+    ''', (name, avatar_url, system_prompt, temperature, era, region, domain, char_id))
     conn.commit()
     conn.close()
 

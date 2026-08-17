@@ -1,5 +1,5 @@
 // Open Edit Character Modal and populate fields
-function openEditCharModal(id, name, systemPrompt, temperature, era = 'medieval', region = 'vietnam') {
+function openEditCharModal(id, name, systemPrompt, temperature, era = 'medieval', region = 'vietnam', domain = 'Lịch sử') {
     const modal = new bootstrap.Modal(document.getElementById('editCharacterModal'));
 
     // Set form action dynamic URL
@@ -12,6 +12,7 @@ function openEditCharModal(id, name, systemPrompt, temperature, era = 'medieval'
     document.getElementById('edit_temperature').value = temperature;
     if (document.getElementById('edit_era')) document.getElementById('edit_era').value = era;
     if (document.getElementById('edit_region')) document.getElementById('edit_region').value = region;
+    if (document.getElementById('edit_domain')) document.getElementById('edit_domain').value = domain;
 
     modal.show();
 }
