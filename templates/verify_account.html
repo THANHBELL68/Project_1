@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Xác Thực & Kích Hoạt Tài Khoản - EduTM{% endblock %}
+
+{% block content %}
+<div class="auth-container" style="max-width: 550px;">
+    <div class="glass-panel text-center">
+        <div class="mb-3">
+            <span class="rounded-circle bg-purple-glow p-3 d-inline-flex align-items-center justify-content-center text-purple fs-2" style="width: 70px; height: 70px;">
+                <i class="fa-solid fa-shield-check"></i>
+            </span>
+        </div>
+        <h2 class="title-gradient mb-2">Kích Hoạt Tài Khoản EduTM</h2>
+        <p class="text-secondary fs-6 mb-4">
+            Tài khoản của bạn <strong>{{ email }}</strong> (SĐT: <strong>{{ phone_number }}</strong>) cần được xác thực để bắt đầu trải nghiệm.
+        </p>
+
+        <!-- Dynamic Tabs for Verification Method -->
+        <ul class="nav nav-tabs nav-justified border-secondary mb-4" id="verifyTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active text-white fw-bold py-2" id="otp-tab" data-bs-toggle="tab" data-bs-target="#otp-pane" type="button" role="tab">
+                    <i class="fa-solid fa-mobile-screen-button text-cyan me-1"></i> Mã OTP SMS
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-white fw-bold py-2" id="email-tab" data-bs-toggle="tab" data-bs-target="#email-pane" type="button" role="tab">
+                    <i class="fa-solid fa-envelope text-purple me-1"></i> Link Email
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="verifyTabsContent">
+            <!-- OTP Pane -->
+            <div class="tab-pane fade show active" id="otp-pane" role="tabpanel">
+                <div class="alert alert-info bg-transparent border-info text-cyan text-start fs-6 mb-3">
+                    <i class="fa-solid fa-circle-info me-2"></i> Hệ thống đã gửi mã OTP 6 số đến SĐT <strong>{{ phone_number }}</strong> (Mã thử nghiệm demo: <strong class="text-warning fs-5 ms-1">{{ simulated_otp }}</strong>).
+                </div>
+
+                <form action="{{ url_for('verify_otp_route') }}" method="POST">
+                    <input type="hidden" name="user_id" value="{{ user_id }}">
+                    <div class="mb-4">
+                        <label class="form-label text-secondary fw-semibold">Nhập mã OTP 6 chữ số</label>
+                        <input type="text" name="otp_code" class="auth-form-input text-center fs-3 fw-bold letter-spacing-2" placeholder="• • • • • •" maxlength="6" required autocomplete="off">
+                    </div>
+
+                    <button type="submit" class="btn btn-auth-submit py-2 fs-6">
+                        <i class="fa-solid fa-circle-check me-1"></i> XÁC NHẬN MÃ OTP
+                    </button>
+                </form>
+            </div>
+
+            <!-- Email Pane -->
+            <div class="tab-pane fade" id="email-pane" role="tabpanel">
+                <div class="alert alert-purple bg-transparent border-purple text-purple text-start fs-6 mb-3">
+                    <i class="fa-solid fa-paper-plane me-2"></i> Hệ thống đã tạo link kích hoạt email ngẫu nhiên cho <strong>{{ email }}</strong>.
+                </div>
+                <p class="text-secondary fs-6">Nhấp vào nút giả lập link email bên dưới để kích hoạt tài khoản ngay lập tức:</p>
+                <a href="{{ url_for('verify_email_route', token=simulated_token) }}" class="btn btn-outline-warning w-100 py-3 fw-bold rounded-3">
+                    <i class="fa-solid fa-link me-2"></i> Kích Hoạt Qua Link Email (Token: {{ simulated_token[:8] }}...)
+                </a>
+            </div>
+        </div>
+
+        <div class="auth-footer mt-4">
+            Đã kích hoạt xong? <a href="{{ url_for('login') }}">Đăng nhập ngay</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

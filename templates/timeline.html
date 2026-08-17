@@ -1,0 +1,406 @@
+{% extends 'base.html' %} {% block title %}Hành Trình Lịch Sử - EduTM{% endblock
+%} {% block content %}
+<div class="row mb-4 text-center">
+  <div class="col-lg-8 mx-auto">
+    <h1 class="display-5 fw-bold title-gradient mb-2">
+      <i class="fa-solid fa-timeline text-purple me-2"></i>Hành Trình Lịch Sử
+    </h1>
+    <p class="text-secondary lead">
+      Khám phá các mốc thời gian vĩ đại của lịch sử Việt Nam và Thế giới chia
+      theo 3 thời kỳ cốt lõi: Cổ Đại, Trung Đại, và Hiện Đại.
+    </p>
+  </div>
+</div>
+
+<!-- Era Navigation Tabs -->
+<div class="row mb-5">
+  <div class="col-md-10 mx-auto">
+    <ul
+      class="nav nav-pills nav-justified glass-panel p-2 gap-2"
+      id="eraTabs"
+      role="tablist"
+    >
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link active btn-era-tab text-white fw-bold py-3"
+          id="ancient-tab"
+          data-bs-toggle="pill"
+          data-bs-target="#ancient"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-landmark text-warning me-2"></i> Thời Cổ Đại
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link btn-era-tab text-white fw-bold py-3"
+          id="medieval-tab"
+          data-bs-toggle="pill"
+          data-bs-target="#medieval"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-shield-halbed text-purple me-2"></i> Thời Trung
+          Đại
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link btn-era-tab text-white fw-bold py-3"
+          id="modern-tab"
+          data-bs-toggle="pill"
+          data-bs-target="#modern"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-atom text-cyan me-2"></i> Thời Hiện Đại
+        </button>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- Tab Content -->
+<div class="tab-content" id="eraTabsContent">
+  <!-- Cổ Đại -->
+  <div class="tab-pane fade show active" id="ancient" role="tabpanel">
+    <div class="row g-4">
+      <!-- 1. Cổ Đại ở Việt Nam -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-warning border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-warning text-dark fs-6"><i class="fa-solid fa-flag me-1"></i> Cổ Đại ở Việt Nam</span>
+            <small class="text-muted-custom">2879 TCN - 938 SCN</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">
+            Thời Đại Hùng Vương & Nền Văn Minh Sông Hồng
+          </h3>
+          <p class="text-secondary fs-6 mb-3">
+            Sự hình thành nhà nước Văn Lang, Âu Lạc với truyền thuyết Bánh Chưng Bánh Giầy, Sơn Tinh Thủy Tinh, Loa Thành cổ kính cùng kỹ thuật đúc Trống đồng Đông Sơn rực rỡ.
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-warning fw-bold mb-2"><i class="fa-solid fa-star me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>2879 TCN: Khai sinh nhà nước Văn Lang thời Hùng Vương.</li>
+              <li>208 TCN: Thục Phán An Dương Vương thành lập nước Âu Lạc.</li>
+              <li>40 SCN: Khởi nghĩa Hai Bà Trưng phất cờ nương tử lẫy lừng.</li>
+              <li>938 SCN: Ngô Quyền đại phá quân Nam Hán trên sông Bạch Đằng.</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-warning fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.ancient_vietnam %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-outline-warning py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-warning"><i class="fa-solid fa-scroll me-1"></i> 12 Tư liệu lịch sử Việt Nam</span>
+            <a href="{{ url_for('knowledge_view') }}?category=ancient_vn" class="btn btn-sm btn-outline-warning">
+              Xem tài liệu <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Cổ Đại trên Thế Giới -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-warning border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-warning text-dark fs-6"><i class="fa-solid fa-globe me-1"></i> Cổ Đại trên Thế Giới</span>
+            <small class="text-muted-custom">Thế kỷ 35 TCN - Thế kỷ 5 SCN</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">Các Nền Văn Minh Cổ Đại Loài Người</h3>
+          <p class="text-secondary fs-6 mb-3">
+            Ai Cập cổ đại với Kim Tự Tháp vĩ đại, Lưỡng Hà với bộ luật Hammurabi, Hy Lạp cổ đại đặt nền móng Triết học & Độc lập Dân chủ, Đế chế La Mã hùng mạnh.
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-warning fw-bold mb-2"><i class="fa-solid fa-earth-americas me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>3100 TCN: Thống nhất Thượng & Hạ Ai Cập thời các Pharaoh.</li>
+              <li>1750 TCN: Bộ luật Hammurabi ra đời tại Lưỡng Hà.</li>
+              <li>Thế kỷ 5 TCN: Thời kỳ hoàng kim của Triết học & Dân chủ Athens.</li>
+              <li>27 TCN - 476 SCN: Hưng thịnh và sụp đổ của Đế chế La Mã.</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-warning fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.ancient_world %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-outline-warning py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-warning"><i class="fa-solid fa-scroll me-1"></i> 25 Bài viết & Video Thế giới</span>
+            <a href="{{ url_for('knowledge_view') }}?category=ancient_world" class="btn btn-sm btn-outline-warning">
+              Xem tài liệu <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trung Đại -->
+  <div class="tab-pane fade" id="medieval" role="tabpanel">
+    <div class="row g-4">
+      <!-- 1. Trung Đại ở Việt Nam -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-purple border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-purple-glow text-purple fs-6"><i class="fa-solid fa-flag me-1"></i> Trung Đại ở Việt Nam</span>
+            <small class="text-muted-custom">938 - 1858 SCN</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">Kỷ Nguyên Độc Lập & Hào Khí Đông A</h3>
+          <p class="text-secondary fs-6 mb-3">
+            Các triều đại Lý - Trần - Lê rực rỡ, 3 lần đánh tan quân Nguyên Mông xâm lược, Nam Quốc Sơn Hà, Bình Ngô Đại Cáo và chiến công Ngọc Hồi - Đống Đa của Quang Trung.
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-purple fw-bold mb-2"><i class="fa-solid fa-crown me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>1010: Lý Thái Tổ dời đô về Thăng Long.</li>
+              <li>1258 - 1288: Hưng Đạo Vương 3 lần đánh tan quân Nguyên Mông.</li>
+              <li>1418 - 1427: Khởi nghĩa Lam Sơn, Lê Lợi giải phóng đất nước.</li>
+              <li>1789: Quang Trung đại phá 20 vạn quân Thanh dịp Tết Kỷ Dậu.</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-purple fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.medieval_vietnam %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-register-custom py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-purple"><i class="fa-solid fa-crown me-1"></i> Tài liệu Trung Đại Việt Nam</span>
+            <a href="{{ url_for('knowledge_view') }}?category=medieval_vn" class="btn btn-sm btn-outline-purple">
+              Xem chi tiết <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Trung Đại trên Thế Giới -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-purple border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-purple-glow text-purple fs-6"><i class="fa-solid fa-globe me-1"></i> Trung Đại trên Thế Giới</span>
+            <small class="text-muted-custom">Thế kỷ 5 - Thế kỷ 15</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">
+            Phong Kiến Phương Tây & Văn Hóa Phục Hưng
+          </h3>
+          <p class="text-secondary fs-6 mb-3">
+            Chế độ phong kiến Châu Âu, Đêm trường Trung cổ, các cuộc phát kiến địa lý của Columbus, Phong trào Văn hóa Phục Hưng hồi sinh nghệ thuật và khoa học kỹ thuật.
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-purple fw-bold mb-2"><i class="fa-solid fa-compass me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>476 SCN: Tây La Mã sụp đổ, khởi đầu thời Trung cổ Châu Âu.</li>
+              <li>1096 - 1291: Các cuộc Thập Tự Chinh vượt Địa Trung Hải.</li>
+              <li>Thế kỷ 14 - 17: Phong trào Văn hóa Phục Hưng bùng nổ tại Ý.</li>
+              <li>1492: Christopher Columbus tìm ra Châu Mỹ.</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-purple fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.medieval_world %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-register-custom py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-purple"><i class="fa-solid fa-book me-1"></i> Kho tài liệu Phục Hưng</span>
+            <a href="{{ url_for('knowledge_view') }}?category=medieval_world" class="btn btn-sm btn-outline-purple">
+              Xem chi tiết <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hiện Đại -->
+  <div class="tab-pane fade" id="modern" role="tabpanel">
+    <div class="row g-4">
+      <!-- 1. Hiện Đại ở Việt Nam -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-info border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-info text-dark fs-6"><i class="fa-solid fa-flag me-1"></i> Hiện Đại ở Việt Nam</span>
+            <small class="text-muted-custom">1945 - Bối cảnh Hiện tại</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">Việt Nam Thời Kỳ Hiện Đại & Đổi Mới</h3>
+          <p class="text-secondary fs-6 mb-3">
+            Cách mạng tháng Tám, Tuyên ngôn Độc lập 1945, Chiến thắng Điện Biên Phủ lừng lẫy 5 châu, Đại thắng Mùa Xuân 1975 thống nhất đất nước, công cuộc Đổi Mới và vươn tầm quốc tế.
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-cyan fw-bold mb-2"><i class="fa-solid fa-bullhorn me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>2/9/1945: Khai sinh nước Việt Nam Dân chủ Cộng hòa.</li>
+              <li>7/5/1954: Chiến thắng lịch sử Điện Biên Phủ.</li>
+              <li>30/4/1975: Chiến dịch Hồ Chí Minh, hoàn toàn giải phóng Mền Nam.</li>
+              <li>1986 - Nay: Công cuộc Đổi Mới và hội nhập toàn cầu.</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-cyan fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.modern_vietnam %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-outline-info py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-cyan"><i class="fa-solid fa-film me-1"></i> 18 Tư liệu phim Việt Nam</span>
+            <a href="{{ url_for('knowledge_view') }}?category=modern_vn" class="btn btn-sm btn-outline-info">
+              Xem tài liệu <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Hiện Đại trên Thế Giới -->
+      <div class="col-md-6">
+        <div class="glass-panel p-4 h-100 border-start border-info border-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-info text-dark fs-6"><i class="fa-solid fa-globe me-1"></i> Hiện Đại trên Thế Giới</span>
+            <small class="text-muted-custom">Thế kỷ 19 - Hiện tại</small>
+          </div>
+          <h3 class="text-white fw-bold mb-3">Cách Mạng Khoa Học & Bứt Phá Công Nghệ</h3>
+          <p class="text-secondary fs-6 mb-3">
+            Cuộc cách mạng công nghiệp bùng nổ, Thuyết tương đối của Einstein làm thay đổi nhận thức không - thời gian, kỷ nguyên nguyên tử, hành trình vươn tới vũ trụ và Trí Tuệ Nhân Tạo (AI).
+          </p>
+          <div class="bg-dark-glass p-3 rounded-3 mb-3">
+            <h6 class="text-cyan fw-bold mb-2"><i class="fa-solid fa-atom me-1"></i> Sự kiện nổi bật:</h6>
+            <ul class="text-secondary small mb-0 ps-3">
+              <li>1905 - 1915: Einstein công bố Thuyết Tương Đối hẹp & rộng.</li>
+              <li>1914 - 1945: Hai cuộc Chiến tranh Thế giới khốc liệt.</li>
+              <li>1969: Con người lần đầu tiên bước chân lên Mặt Trăng (Apollo 11).</li>
+              <li>Kỷ nguyên Internet, Máy tính & Bùng nổ Trí tuệ nhân tạo (AI).</li>
+            </ul>
+          </div>
+          <!-- Vĩ nhân thuộc thời kỳ này -->
+          <div class="mt-3 pt-3 border-top border-secondary">
+            <h6 class="text-cyan fw-bold mb-2"><i class="fa-solid fa-user-astronaut me-1"></i> Vĩ nhân thời kỳ này:</h6>
+            <div class="row row-cols-1 row-cols-sm-2 g-2">
+              {% for char in grouped_characters.modern_world %}
+                <div class="col">
+                  <div class="bg-dark-glass p-2 rounded-3 d-flex align-items-center gap-2 border border-secondary">
+                    <img src="{{ char.avatar_url or '/static/images/default_avatar.png' }}" alt="{{ char.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                    <div class="overflow-hidden">
+                      <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ char.name }}</div>
+                      <a href="{{ url_for('chat_room', char_id=char.id) }}" class="btn btn-sm btn-outline-info py-0 px-2 mt-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-comments me-1"></i> Trò chuyện
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <small class="text-muted">Đang cập nhật nhân vật...</small>
+              {% endfor %}
+            </div>
+          </div>
+          <hr class="border-secondary" />
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-cyan"><i class="fa-solid fa-atom me-1"></i> Kho tài liệu Khoa Học Modern</span>
+            <a href="{{ url_for('knowledge_view') }}?category=modern_world" class="btn btn-sm btn-outline-info">
+              Xem tài liệu <i class="fa-solid fa-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Handle URL param query ?era=ancient / medieval / modern
+  document.addEventListener("DOMContentLoaded", function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const era = urlParams.get("era");
+    if (era === "medieval") {
+      const medievalTab = document.getElementById("medieval-tab");
+      if (medievalTab) bootstrap.Tab.getOrCreateInstance(medievalTab).show();
+    } else if (era === "modern") {
+      const modernTab = document.getElementById("modern-tab");
+      if (modernTab) bootstrap.Tab.getOrCreateInstance(modernTab).show();
+    }
+  });
+</script>
+{% endblock %}

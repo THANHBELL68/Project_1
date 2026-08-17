@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Giới Thiệu Dự Án EduTM{% endblock %}
+
+{% block content %}
+<div class="row mb-5 align-items-center">
+    <div class="col-lg-7">
+        <span class="badge bg-purple-glow text-purple px-3 py-2 rounded-pill fs-6 mb-3 fw-semibold">
+            <i class="fa-solid fa-bullhorn me-1"></i> Về Chúng Tôi
+        </span>
+        <h1 class="display-4 fw-extrabold title-gradient mb-3">EduTM - Cổng Thời Gian Tri Thức</h1>
+        <p class="lead text-light opacity-90 mb-4">
+            Dự án giáo dục công nghệ tiên phong kết hợp Trí Tuệ Nhân Tạo (AI) nhập vai, giọng nói sinh động và dòng chảy thời gian tương tác nhằm kiến tạo không gian học tập Lịch sử truyền cảm hứng cho thế hệ trẻ.
+        </p>
+    </div>
+    <div class="col-lg-5 text-center">
+        <div class="glass-panel p-4 position-relative">
+            <i class="fa-solid fa-hourglass-half text-purple display-1 animate-spin-slow mb-3"></i>
+            <h3 class="text-white fw-bold">Sứ Mệnh Khai Mở</h3>
+            <p class="text-secondary fs-6">"Biến Lịch sử từ các con số khô khô thành những cuộc trò chuyện sinh động và đầy cảm xúc."</p>
+        </div>
+    </div>
+</div>
+
+<!-- Mission, Team, Project Cards -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="glass-panel p-4 h-100 text-center">
+            <div class="rounded-circle bg-purple-glow d-inline-flex align-items-center justify-content-center p-3 mb-3 text-purple fs-2" style="width: 70px; height: 70px;">
+                <i class="fa-solid fa-rocket"></i>
+            </div>
+            <h4 class="text-white fw-bold mb-2">Sứ Mệnh</h4>
+            <p class="text-secondary fs-6">
+                Xây dựng phương pháp học lịch sử tương tác đỉnh cao, giúp học sinh chủ động khám phá, đối thoại trực tiếp và thấu hiểu lịch sử sâu sắc.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="glass-panel p-4 h-100 text-center">
+            <div class="rounded-circle bg-cyan-glow d-inline-flex align-items-center justify-content-center p-3 mb-3 text-cyan fs-2" style="width: 70px; height: 70px;">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <h4 class="text-white fw-bold mb-2">Đội Ngũ EduTM</h4>
+            <p class="text-secondary fs-6">
+                Quy tụ các kĩ sư AI, chuyên gia công nghệ giáo dục và các cố vấn lịch sử đầy tâm huyết nhằm mang đến trải nghiệm chính xác và sinh động nhất.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="glass-panel p-4 h-100 text-center">
+            <div class="rounded-circle bg-pink-glow d-inline-flex align-items-center justify-content-center p-3 mb-3 text-pink fs-2" style="width: 70px; height: 70px;">
+                <i class="fa-solid fa-laptop-code"></i>
+            </div>
+            <h4 class="text-white fw-bold mb-2">Công Nghệ Đột Phá</h4>
+            <p class="text-secondary fs-6">
+                Tích hợp mô hình AI NVIDIA NIM / LLM tiên tiến, Edge Neural Speech TTS Tiếng Việt và mô phỏng xác thực OTP đa tầng an toàn.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

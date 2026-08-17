@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Liên Hệ Hỗ Trợ - EduTM{% endblock %}
+
+{% block content %}
+<div class="row mb-5 text-center">
+    <div class="col-lg-8 mx-auto">
+        <h1 class="display-5 fw-bold title-gradient mb-2"><i class="fa-solid fa-paper-plane text-pink me-2"></i>Liên Hệ & Hỗ Trợ</h1>
+        <p class="text-secondary lead">
+            Bạn có câu hỏi, góp ý hoặc cần hỗ trợ về nền tảng EduTM? Hãy gửi thông tin cho chúng tôi ngay bên dưới.
+        </p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <h3 class="text-white fw-bold mb-4"><i class="fa-solid fa-headset text-purple me-2"></i>Thông Tin Liên Hệ</h3>
+                <ul class="list-unstyled d-flex flex-column gap-3 text-secondary">
+                    <li class="d-flex align-items-center gap-3">
+                        <i class="fa-solid fa-envelope text-purple fs-5"></i>
+                        <span>Email: <strong class="text-white">EduTM.education_history@gmail.com</strong></span>
+                    </li>
+                    <li class="d-flex align-items-center gap-3">
+                        <i class="fa-solid fa-phone text-cyan fs-5"></i>
+                        <span>Hotline: <strong class="text-white">1900 6868 (8:00 - 20:00)</strong></span>
+                    </li>
+                    <li class="d-flex align-items-center gap-3">
+                        <i class="fa-solid fa-location-dot text-pink fs-5"></i>
+                        <span>Địa chỉ: <strong class="text-white">Khu Công Nghệ Cao, Hà Nội / TP. Hồ Chí Minh</strong></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="mt-4 pt-3 border-top border-secondary text-center">
+                <span class="text-muted-custom">Kết nối cộng đồng EduTM:</span>
+                <div class="d-flex justify-content-center gap-3 mt-2 fs-4">
+                    <a href="#" class="text-purple"><i class="fa-brands fa-facebook"></i></a>
+                    <a href="#" class="text-cyan"><i class="fa-brands fa-youtube"></i></a>
+                    <a href="#" class="text-pink"><i class="fa-brands fa-tiktok"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="glass-panel p-4">
+            <h3 class="text-white fw-bold mb-3"><i class="fa-solid fa-comment-dots text-cyan me-2"></i>Gửi Phản Hồi Trực Tuyến</h3>
+            <form action="{{ url_for('contact_submit') }}" method="POST">
+                <div class="mb-3">
+                    <label class="form-label text-secondary fw-semibold">Họ và Tên</label>
+                    <input type="text" name="fullname" class="auth-form-input" placeholder="Nhập họ và tên..." required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-secondary fw-semibold">Email hoặc Số điện thoại</label>
+                    <input type="text" name="contact_info" class="auth-form-input" placeholder="Email hoặc SĐT liên hệ..." required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-secondary fw-semibold">Nội dung góp ý / Hỗ trợ</label>
+                    <textarea name="message" rows="4" class="auth-form-input" placeholder="Nhập nội dung cần hỗ trợ..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-auth-submit fs-6">
+                    <i class="fa-solid fa-paper-plane me-1"></i> GỬI PHẢN HỒI
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

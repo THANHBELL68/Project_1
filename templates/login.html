@@ -1,29 +1,160 @@
 {% extends 'base.html' %}
 
-{% block title %}Đăng Nhập Hệ Thống{% endblock %}
+{% block title %}Đăng Nhập Hệ Thống - EduTM{% endblock %}
 
 {% block content %}
-<div class="auth-container">
+<div class="auth-container" style="max-width: 500px;">
     <div class="glass-panel">
-        <h2 class="text-center title-gradient mb-4">Đăng Nhập</h2>
-        
-        <form action="{{ url_for('login') }}" method="POST">
-            <div class="auth-form-field">
-                <label for="username"><i class="fa-solid fa-user"></i> Tên đăng nhập</label>
-                <input type="text" id="username" name="username" class="auth-form-input" placeholder="Tên đăng nhập..." required autocomplete="username">
+        <h2 class="text-center title-gradient mb-3"><i class="fa-solid fa-right-to-bracket text-purple me-2"></i>Đăng Nhập</h2>
+        <p class="text-center text-secondary fs-6 mb-4">Mở cổng thời gian tri thức cùng tài khoản EduTM</p>
+
+        <!-- Dynamic Login Method Navigation Tabs -->
+        <ul class="nav nav-pills nav-justified bg-dark-glass p-1 rounded-3 mb-4" id="loginMethodTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active btn-sm text-white fw-semibold" id="tab-password" data-bs-toggle="pill" data-bs-target="#pane-password" type="button" role="tab">
+                    <i class="fa-solid fa-envelope me-1 text-purple"></i> Email/User
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm text-white fw-semibold" id="tab-phone" data-bs-toggle="pill" data-bs-target="#pane-phone" type="button" role="tab">
+                    <i class="fa-solid fa-mobile-screen-button me-1 text-cyan"></i> Số Điện Thoại
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="loginMethodTabsContent">
+            <!-- 1. Đăng nhập bằng Email / Username + Password -->
+            <div class="tab-pane fade show active" id="pane-password" role="tabpanel">
+                <form action="{{ url_for('login') }}" method="POST">
+                    <input type="hidden" name="login_type" value="password">
+                    <div class="auth-form-field">
+                        <label for="username"><i class="fa-solid fa-user text-purple me-1"></i> Email hoặc Tên đăng nhập</label>
+                        <input type="text" id="username" name="username" class="auth-form-input" placeholder="Nhập Email hoặc Username..." required autocomplete="username">
+                    </div>
+
+                    <div class="auth-form-field">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="password" class="mb-0"><i class="fa-solid fa-lock text-purple me-1"></i> Mật khẩu</label>
+                            <a href="#" class="text-cyan fs-7 text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">
+                                Quên mật khẩu?
+                            </a>
+                        </div>
+                        <input type="password" id="password" name="password" class="auth-form-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" class="btn-auth-submit mt-2">
+                        <i class="fa-solid fa-right-to-bracket me-1"></i> ĐĂNG NHẬP
+                    </button>
+                </form>
             </div>
-            
-            <div class="auth-form-field">
-                <label for="password"><i class="fa-solid fa-lock"></i> Mật khẩu</label>
-                <input type="password" id="password" name="password" class="auth-form-input" placeholder="Mật khẩu..." required autocomplete="current-password">
+
+            <!-- 2. Đăng nhập bằng Số điện thoại (OTP hoặc Password) -->
+            <div class="tab-pane fade" id="pane-phone" role="tabpanel">
+                <form action="{{ url_for('login_phone_otp') }}" method="POST" id="phoneOtpLoginForm">
+                    <div class="auth-form-field">
+                        <label for="phone_number"><i class="fa-solid fa-phone text-cyan me-1"></i> Số điện thoại</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark-glass border-secondary text-secondary">+84</span>
+                            <input type="tel" id="phone_number" name="phone_number" class="auth-form-input" placeholder="0901234567" required pattern="[0-9]{10}">
+                            <button type="button" class="btn btn-outline-info" id="btnSendPhoneOtp" onclick="sendPhoneOtpLogin()">
+                                Gửi OTP
+                            </button>
+                        </div>
+                        <small class="text-muted-custom">Hệ thống hỗ trợ gửi mã OTP qua SMS / Zalo / Viber</small>
+                    </div>
+
+                    <div class="auth-form-field">
+                        <label for="phone_otp"><i class="fa-solid fa-key text-cyan me-1"></i> Mã xác thực OTP (6 chữ số)</label>
+                        <input type="text" id="phone_otp" name="phone_otp" class="auth-form-input text-center fw-bold fs-5" placeholder="• • • • • •" maxlength="6" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-auth-submit bg-cyan-gradient mt-2">
+                        <i class="fa-solid fa-bolt me-1"></i> ĐĂNG NHẬP VỚI OTP
+                    </button>
+                </form>
             </div>
-            
-            <button type="submit" class="btn-auth-submit">ĐĂNG NHẬP</button>
-        </form>
-        
+        </div>
+
+        <!-- 3. Đăng nhập bằng Tài khoản mạng xã hội (Social Login) -->
+        <div class="social-login-divider my-4">
+            <span class="bg-dark-panel px-3 text-secondary fs-7">HOẶC ĐĂNG NHẬP BẰNG</span>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mb-3">
+            <a href="{{ url_for('social_login', provider='google') }}" class="btn btn-social btn-google flex-fill">
+                <i class="fa-brands fa-google me-1 text-danger"></i> Google
+            </a>
+            <a href="{{ url_for('social_login', provider='facebook') }}" class="btn btn-social btn-facebook flex-fill">
+                <i class="fa-brands fa-facebook me-1 text-primary"></i> Facebook
+            </a>
+            <a href="{{ url_for('social_login', provider='apple') }}" class="btn btn-social btn-apple flex-fill">
+                <i class="fa-brands fa-apple me-1 text-white"></i> Apple
+            </a>
+        </div>
+
         <div class="auth-footer">
-            Chưa có tài khoản? <a href="{{ url_for('register') }}">Đăng ký tại đây</a>
+            Chưa có tài khoản? <a href="{{ url_for('register') }}" class="fw-bold text-purple ms-1">Đăng ký tại đây</a>
         </div>
     </div>
 </div>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-secondary text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-purple"><i class="fa-solid fa-key me-2"></i>Khôi Phục Mật Khẩu</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('forgot_password') }}" method="POST">
+                <div class="modal-body">
+                    <p class="text-secondary fs-6 mb-3">Nhập địa chỉ Email đăng ký của bạn. Hệ thống sẽ tự động gửi link khôi phục mật khẩu an toàn.</p>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary fw-semibold">Địa chỉ Email</label>
+                        <input type="email" name="reset_email" class="auth-form-input" placeholder="nguyenvana@gmail.com" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-register-custom">Gửi Link Khôi Phục</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function sendPhoneOtpLogin() {
+    const phoneInput = document.getElementById('phone_number');
+    const phone = phoneInput.value.trim();
+    if (!phone || phone.length < 10) {
+        alert('Vui lòng nhập đúng Số điện thoại (10 chữ số) trước khi gửi OTP!');
+        return;
+    }
+
+    const btn = document.getElementById('btnSendPhoneOtp');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...';
+
+    fetch('/api/send-otp-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: phone })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`[MÔ PHỎNG SMS OTP] Mã OTP gửi về SĐT ${phone} là: ${data.otp_code}`);
+            document.getElementById('phone_otp').value = data.otp_code;
+        } else {
+            alert(data.error || 'Đã có lỗi xảy ra.');
+        }
+    })
+    .catch(() => alert('Lỗi kết nối máy chủ.'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = 'Gửi lại OTP';
+    });
+}
+</script>
 {% endblock %}

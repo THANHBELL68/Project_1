@@ -1,34 +1,204 @@
 {% extends 'base.html' %}
 
-{% block title %}Đăng Ký Tài Khoản{% endblock %}
+{% block title %}Đăng Ký Tài Khoản - EduTM{% endblock %}
 
 {% block content %}
-<div class="auth-container">
+<div class="auth-container" style="max-width: 520px;">
     <div class="glass-panel">
-        <h2 class="text-center title-gradient mb-4">Đăng Ký</h2>
-        
-        <form action="{{ url_for('register') }}" method="POST">
+        <h2 class="text-center title-gradient mb-2"><i class="fa-solid fa-user-plus text-purple me-2"></i>Tạo Tài Khoản</h2>
+        <p class="text-center text-secondary fs-6 mb-4">Gia nhập cổng thời gian tri thức EduTM ngay hôm nay</p>
+
+        <form action="{{ url_for('register') }}" method="POST" id="registerForm" onsubmit="return validateRegisterForm(event)">
+            <!-- 1. Tên đăng nhập -->
             <div class="auth-form-field">
-                <label for="username"><i class="fa-solid fa-user"></i> Tên đăng nhập</label>
-                <input type="text" id="username" name="username" class="auth-form-input" placeholder="Nhập tên đăng nhập..." required autocomplete="off">
+                <label for="username"><i class="fa-solid fa-user text-purple me-1"></i> Tên đăng nhập (Username)</label>
+                <input type="text" id="username" name="username" class="auth-form-input" placeholder="Nhập tên đăng nhập (ví dụ: edu_student)..." required autocomplete="off">
             </div>
-            
+
+            <!-- 2. Email -->
             <div class="auth-form-field">
-                <label for="email"><i class="fa-solid fa-envelope"></i> Email</label>
-                <input type="email" id="email" name="email" class="auth-form-input" placeholder="Nhập địa chỉ email..." required>
+                <label for="email"><i class="fa-solid fa-envelope text-purple me-1"></i> Địa chỉ Email</label>
+                <input type="email" id="email" name="email" class="auth-form-input" placeholder="nhapemail@gmail.com" required oninput="validateEmailField()">
+                <div class="invalid-feedback d-none" id="emailError">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i> Email không đúng định dạng hợp lệ (Ví dụ: @gmail.com)
+                </div>
             </div>
-            
+
+            <!-- 3. Số điện thoại -->
             <div class="auth-form-field">
-                <label for="password"><i class="fa-solid fa-lock"></i> Mật khẩu</label>
-                <input type="password" id="password" name="password" class="auth-form-input" placeholder="Nhập mật khẩu..." required>
+                <label for="phone_number"><i class="fa-solid fa-phone text-cyan me-1"></i> Số điện thoại</label>
+                <input type="tel" id="phone_number" name="phone_number" class="auth-form-input" placeholder="0901234567" required pattern="[0-9]{10}" oninput="validatePhoneField()">
+                <div class="invalid-feedback d-none" id="phoneError">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i> Số điện thoại phải gồm 10 chữ số hợp lệ.
+                </div>
             </div>
-            
-            <button type="submit" class="btn-auth-submit">ĐĂNG KÝ NGAY</button>
+
+            <!-- 4. Mật khẩu -->
+            <div class="auth-form-field">
+                <label for="password"><i class="fa-solid fa-lock text-purple me-1"></i> Mật khẩu</label>
+                <input type="password" id="password" name="password" class="auth-form-input" placeholder="Tối thiểu 8 ký tự..." required oninput="checkPasswordStrength()">
+
+                <!-- Password Strength Meter -->
+                <div class="progress mt-2" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                    <div class="progress-bar transition-all" id="strengthMeter" role="progressbar" style="width: 0%;"></div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                    <small class="text-secondary fs-7">Độ mạnh mật khẩu:</small>
+                    <small class="fw-bold fs-7" id="strengthText">Chưa nhập</small>
+                </div>
+
+                <!-- Password Rules Checklist -->
+                <div class="password-rules-box bg-dark-glass p-2 rounded-3 mt-2 fs-7">
+                    <div class="d-flex align-items-center gap-2 text-secondary mb-1" id="ruleMinLen">
+                        <i class="fa-solid fa-circle-xmark text-danger rule-icon"></i> Tối thiểu 8 ký tự
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-secondary mb-1" id="ruleUpperLower">
+                        <i class="fa-solid fa-circle-xmark text-danger rule-icon"></i> Có chữ hoa (A-Z) & chữ thường (a-z)
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-secondary mb-1" id="ruleNumber">
+                        <i class="fa-solid fa-circle-xmark text-danger rule-icon"></i> Có ít nhất 1 chữ số (0-9)
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-secondary" id="ruleSpecial">
+                        <i class="fa-solid fa-circle-xmark text-danger rule-icon"></i> Có ký tự đặc biệt (!@#$%^&*)
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Nhập lại mật khẩu -->
+            <div class="auth-form-field">
+                <label for="confirm_password"><i class="fa-solid fa-shield-halbed text-pink me-1"></i> Nhập lại mật khẩu</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="auth-form-input" placeholder="Nhập lại mật khẩu vừa gõ..." required oninput="checkPasswordMatch()">
+                <div class="invalid-feedback d-none" id="confirmPasswordError">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i> Mật khẩu nhập lại không trùng khớp!
+                </div>
+            </div>
+
+            <button type="submit" class="btn-auth-submit mt-3" id="btnRegisterSubmit">
+                <i class="fa-solid fa-user-plus me-1"></i> ĐĂNG KÝ NGAY
+            </button>
         </form>
-        
+
         <div class="auth-footer">
-            Đã có tài khoản? <a href="{{ url_for('login') }}">Đăng nhập ngay</a>
+            Đã có tài khoản? <a href="{{ url_for('login') }}" class="fw-bold text-purple ms-1">Đăng nhập ngay</a>
         </div>
     </div>
 </div>
+
+<script>
+function validateEmailField() {
+    const email = document.getElementById('email').value.trim();
+    const errorEl = document.getElementById('emailError');
+    // Email regex requirement: standard format e.g. name@domain.ext
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (email && !emailRegex.test(email)) {
+        errorEl.classList.remove('d-none');
+        return false;
+    } else {
+        errorEl.classList.add('d-none');
+        return true;
+    }
+}
+
+function validatePhoneField() {
+    const phone = document.getElementById('phone_number').value.trim();
+    const errorEl = document.getElementById('phoneError');
+    const phoneRegex = /^0[0-9]{9}$/;
+    if (phone && !phoneRegex.test(phone)) {
+        errorEl.classList.remove('d-none');
+        return false;
+    } else {
+        errorEl.classList.add('d-none');
+        return true;
+    }
+}
+
+function checkPasswordStrength() {
+    const pass = document.getElementById('password').value;
+    const strengthMeter = document.getElementById('strengthMeter');
+    const strengthText = document.getElementById('strengthText');
+
+    let score = 0;
+
+    // Rule checks
+    const hasMinLen = pass.length >= 8;
+    const hasUpper = /[A-Z]/.test(pass);
+    const hasLower = /[a-z]/.test(pass);
+    const hasNumber = /[0-9]/.test(pass);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+
+    updateRuleIndicator('ruleMinLen', hasMinLen);
+    updateRuleIndicator('ruleUpperLower', hasUpper && hasLower);
+    updateRuleIndicator('ruleNumber', hasNumber);
+    updateRuleIndicator('ruleSpecial', hasSpecial);
+
+    if (hasMinLen) score += 25;
+    if (hasUpper && hasLower) score += 25;
+    if (hasNumber) score += 25;
+    if (hasSpecial) score += 25;
+
+    strengthMeter.style.width = score + '%';
+
+    if (score <= 25) {
+        strengthMeter.className = 'progress-bar bg-danger';
+        strengthText.textContent = 'Yếu';
+        strengthText.className = 'fw-bold fs-7 text-danger';
+    } else if (score <= 50) {
+        strengthMeter.className = 'progress-bar bg-warning';
+        strengthText.textContent = 'Trung Bình';
+        strengthText.className = 'fw-bold fs-7 text-warning';
+    } else if (score <= 75) {
+        strengthMeter.className = 'progress-bar bg-info';
+        strengthText.textContent = 'Mạnh';
+        strengthText.className = 'fw-bold fs-7 text-info';
+    } else {
+        strengthMeter.className = 'progress-bar bg-success';
+        strengthText.textContent = 'Rất Mạnh';
+        strengthText.className = 'fw-bold fs-7 text-success';
+    }
+
+    checkPasswordMatch();
+    return score === 100;
+}
+
+function updateRuleIndicator(elementId, isValid) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const icon = el.querySelector('.rule-icon');
+    if (isValid) {
+        icon.className = 'fa-solid fa-circle-check text-success rule-icon';
+        el.className = 'd-flex align-items-center gap-2 text-white mb-1';
+    } else {
+        icon.className = 'fa-solid fa-circle-xmark text-danger rule-icon';
+        el.className = 'd-flex align-items-center gap-2 text-secondary mb-1';
+    }
+}
+
+function checkPasswordMatch() {
+    const pass = document.getElementById('password').value;
+    const confirmPass = document.getElementById('confirm_password').value;
+    const errorEl = document.getElementById('confirmPasswordError');
+
+    if (confirmPass && pass !== confirmPass) {
+        errorEl.classList.remove('d-none');
+        return false;
+    } else {
+        errorEl.classList.add('d-none');
+        return true;
+    }
+}
+
+function validateRegisterForm(e) {
+    const isEmailValid = validateEmailField();
+    const isPhoneValid = validatePhoneField();
+    const isPassStrengthValid = checkPasswordStrength();
+    const isPassMatchValid = checkPasswordMatch();
+
+    if (!isEmailValid || !isPhoneValid || !isPassMatchValid || !isPassStrengthValid) {
+        e.preventDefault();
+        alert('Vui lòng kiểm tra và hoàn thiện chính xác tất cả thông tin đăng ký!');
+        return false;
+    }
+    return true;
+}
+</script>
 {% endblock %}

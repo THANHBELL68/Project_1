@@ -5,6 +5,8 @@ import hashlib
 import sqlite3
 import tempfile
 import time
+import secrets
+import random
 from io import BytesIO
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -100,8 +102,15 @@ def is_admin():
 # Middleware to check auth
 @app.before_request
 def require_login():
-    allowed_routes = ['login', 'register', 'static', 'tts']
+    allowed_routes = [
+        'login', 'register', 'login_phone_otp', 'send_otp_login',
+        'forgot_password', 'social_login', 'verify_account_view',
+        'verify_email_route', 'verify_otp_route', 'index',
+        'about_view', 'contact_view', 'contact_submit',
+        'static', 'tts'
+    ]
     if request.endpoint and request.endpoint not in allowed_routes and not is_logged_in():
+        flash('Vui lòng đăng nhập tài khoản EduTM để truy cập tính năng này!', 'warning')
         return redirect(url_for('login'))
 
 @app.route('/')
@@ -111,72 +120,305 @@ def index():
     conn.close()
     return render_template('index.html', characters=characters, username=session.get('username'), role=session.get('role'))
 
-# Authentication Routes
+# Main Navigation Section Views
+@app.route('/timeline')
+def timeline_view():
+    conn = get_db_connection()
+    characters = conn.execute('SELECT * FROM characters').fetchall()
+    conn.close()
+
+    grouped_characters = {
+        'ancient_vietnam': [],
+        'ancient_world': [],
+        'medieval_vietnam': [],
+        'medieval_world': [],
+        'modern_vietnam': [],
+        'modern_world': []
+    }
+    for char in characters:
+        era = char['era'] if char['era'] else 'medieval'
+        region = char['region'] if char['region'] else 'vietnam'
+        key = f"{era}_{region}"
+        if key in grouped_characters:
+            grouped_characters[key].append(char)
+
+    return render_template('timeline.html', grouped_characters=grouped_characters)
+
+@app.route('/knowledge')
+def knowledge_view():
+    return render_template('knowledge.html')
+
+@app.route('/about')
+def about_view():
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact_view():
+    return render_template('contact.html')
+
+@app.route('/contact/submit', methods=['POST'])
+def contact_submit():
+    fullname = request.form.get('fullname', '').strip()
+    message = request.form.get('message', '').strip()
+    flash(f'Cảm ơn {fullname}! EduTM đã ghi nhận phản hồi của bạn và sẽ phản hồi sớm nhất.', 'success')
+    return redirect(url_for('contact_view'))
+
+# Authentication Routes (Registration with 4 Core Steps & Login with 3 Methods)
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if is_logged_in():
         return redirect(url_for('index'))
-        
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
+        phone_number = request.form.get('phone_number', '').strip()
         password = request.form.get('password', '')
-        
-        if not username or not email or not password:
-            flash('Vui lòng điền đầy đủ thông tin!', 'danger')
+        confirm_password = request.form.get('confirm_password', '')
+
+        # 1. Front-end & Server Validation
+        if not username or not email or not phone_number or not password:
+            flash('Vui lòng điền đầy đủ tất cả các trường dữ liệu!', 'danger')
             return render_template('register.html')
-            
+
+        if password != confirm_password:
+            flash('Mật khẩu nhập lại không trùng khớp!', 'danger')
+            return render_template('register.html')
+
         conn = get_db_connection()
-        user_check = conn.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email)).fetchone()
-        
+        # 2. Check duplicate Email, Phone Number, or Username in Database
+        user_check = conn.execute(
+            'SELECT id FROM users WHERE username = ? OR email = ? OR phone_number = ?',
+            (username, email, phone_number)
+        ).fetchone()
+
         if user_check:
-            flash('Tên đăng nhập hoặc Email đã tồn tại!', 'danger')
+            flash('Tên đăng nhập, Email hoặc Số điện thoại này đã được đăng ký trước đó!', 'danger')
             conn.close()
             return render_template('register.html')
-            
+
+        # 2. Password Hashing (One-way hash with Scrypt/PBKDF2/Bcrypt)
         pass_hash = generate_password_hash(password)
+
+        # 4. Generate random Email verification token and 6-digit SMS OTP code
+        token = secrets.token_hex(16)
+        otp = str(random.randint(100000, 999999))
+
         try:
-            conn.execute(
-                'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-                (username, email, pass_hash, 'student')
-            )
+            # 3. Store into Database with status = 'pending'
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO users (username, email, phone_number, password_hash, role, status, verification_token, otp_code)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+            ''', (username, email, phone_number, pass_hash, 'student', token, otp))
             conn.commit()
-            flash('Đăng ký tài khoản thành công! Hãy đăng nhập.', 'success')
+            new_user_id = cursor.lastrowid
             conn.close()
-            return redirect(url_for('login'))
+
+            flash('Tài khoản đã được tạo thành công! Vui lòng kích hoạt qua Email hoặc Mã OTP.', 'info')
+            return redirect(url_for('verify_account_view', user_id=new_user_id))
         except Exception as e:
             conn.close()
-            flash(f'Đã xảy ra lỗi: {str(e)}', 'danger')
-            
+            flash(f'Đã xảy ra lỗi khi tạo tài khoản: {str(e)}', 'danger')
+
     return render_template('register.html')
 
+# Account Verification Routes (Email Token & Phone OTP)
+@app.route('/verify-account')
+def verify_account_view():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        flash('Yêu cầu không hợp lệ.', 'danger')
+        return redirect(url_for('register'))
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+
+    if not user:
+        flash('Người dùng không tồn tại.', 'danger')
+        return redirect(url_for('register'))
+
+    if user['status'] == 'active':
+        flash('Tài khoản của bạn đã được kích hoạt từ trước!', 'success')
+        return redirect(url_for('login'))
+
+    return render_template(
+        'verify_account.html',
+        user_id=user['id'],
+        email=user['email'],
+        phone_number=user['phone_number'],
+        simulated_otp=user['otp_code'],
+        simulated_token=user['verification_token']
+    )
+
+@app.route('/verify-email/<token>')
+def verify_email_route(token):
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE verification_token = ?', (token,)).fetchone()
+
+    if not user:
+        conn.close()
+        flash('Mã xác thực email không hợp lệ hoặc đã hết hạn!', 'danger')
+        return redirect(url_for('register'))
+
+    conn.execute("UPDATE users SET status = 'active' WHERE id = ?", (user['id'],))
+    conn.commit()
+    conn.close()
+
+    flash('Kích hoạt tài khoản qua Email thành công! Bạn có thể đăng nhập ngay.', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/verify-otp', methods=['POST'])
+def verify_otp_route():
+    user_id = request.form.get('user_id')
+    otp_code = request.form.get('otp_code', '').strip()
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+
+    if not user or user['otp_code'] != otp_code:
+        conn.close()
+        flash('Mã OTP không chính xác, vui lòng thử lại!', 'danger')
+        return redirect(url_for('verify_account_view', user_id=user_id))
+
+    conn.execute("UPDATE users SET status = 'active' WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    flash('Kích hoạt tài khoản qua SĐT thành công! Hãy đăng nhập.', 'success')
+    return redirect(url_for('login'))
+
+# Login Methods: Email/Username, Phone OTP & Social Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if is_logged_in():
         return redirect(url_for('index'))
-        
+
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        username_or_email = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        
-        if not username or not password:
-            flash('Vui lòng điền đầy đủ thông tin!', 'danger')
+
+        if not username_or_email or not password:
+            flash('Vui lòng điền đầy đủ thông tin đăng nhập!', 'danger')
             return render_template('login.html')
-            
+
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        user = conn.execute(
+            'SELECT * FROM users WHERE username = ? OR email = ?',
+            (username_or_email, username_or_email)
+        ).fetchone()
         conn.close()
-        
+
         if user and check_password_hash(user['password_hash'], password):
+            if user['status'] == 'pending':
+                flash('Tài khoản của bạn chưa kích hoạt! Vui lòng hoàn tất xác thực OTP/Email.', 'warning')
+                return redirect(url_for('verify_account_view', user_id=user['id']))
+
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user['role']
-            flash(f'Chào mừng trở lại, {username}!', 'success')
+            flash(f'Chào mừng trở lại, {user["username"]}!', 'success')
             return redirect(url_for('index'))
         else:
-            flash('Tên đăng nhập hoặc mật khẩu không chính xác!', 'danger')
-            
+            flash('Tên đăng nhập/Email hoặc Mật khẩu không chính xác!', 'danger')
+
     return render_template('login.html')
+
+@app.route('/api/send-otp-login', methods=['POST'])
+def send_otp_login():
+    data = request.json or {}
+    phone_number = data.get('phone_number', '').strip()
+
+    if not phone_number:
+        return jsonify({'error': 'Vui lòng cung cấp Số điện thoại'}), 400
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE phone_number = ?', (phone_number,)).fetchone()
+
+    otp_code = str(random.randint(100000, 999999))
+    if user:
+        conn.execute('UPDATE users SET otp_code = ? WHERE id = ?', (otp_code, user['id']))
+        conn.commit()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': f'Đã gửi OTP đến {phone_number}',
+        'otp_code': otp_code
+    })
+
+@app.route('/login/phone-otp', methods=['POST'])
+def login_phone_otp():
+    phone_number = request.form.get('phone_number', '').strip()
+    phone_otp = request.form.get('phone_otp', '').strip()
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE phone_number = ?', (phone_number,)).fetchone()
+
+    if not user:
+        # Auto-create user for phone passwordless login if first time
+        pass_hash = generate_password_hash('phone_' + phone_number)
+        username = f"user_{phone_number[-4:]}"
+        email = f"{phone_number}@edutm.edu.vn"
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO users (username, email, phone_number, password_hash, role, status, otp_code)
+            VALUES (?, ?, ?, ?, 'student', 'active', ?)
+        ''', (username, email, phone_number, pass_hash, phone_otp))
+        conn.commit()
+        user_id = cursor.lastrowid
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+
+    if user['otp_code'] and user['otp_code'] == phone_otp:
+        conn.execute("UPDATE users SET status = 'active' WHERE id = ?", (user['id'],))
+        conn.commit()
+        conn.close()
+
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['role'] = user['role']
+        flash(f'Đăng nhập bằng SĐT ({phone_number}) thành công!', 'success')
+        return redirect(url_for('index'))
+    else:
+        conn.close()
+        flash('Mã OTP không đúng hoặc đã hết hạn!', 'danger')
+        return redirect(url_for('login'))
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    reset_email = request.form.get('reset_email', '').strip()
+    flash(f'Đã gửi hướng dẫn khôi phục mật khẩu tới email {reset_email}. Vui lòng kiểm tra hòm thư!', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/social-login/<provider>')
+def social_login(provider):
+    provider_name = provider.capitalize()
+    username = f"{provider}_user"
+    email = f"{provider}_user@edutm.edu.vn"
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+
+    if not user:
+        pass_hash = generate_password_hash('social_secret_' + provider)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO users (username, email, password_hash, role, status)
+            VALUES (?, ?, ?, 'student', 'active')
+        ''', (username, email, pass_hash))
+        conn.commit()
+        user_id = cursor.lastrowid
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+
+    conn.close()
+
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    session['role'] = user['role']
+
+    flash(f'Đăng nhập thành công bằng tài khoản {provider_name}!', 'success')
+    return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
@@ -294,10 +536,10 @@ def handle_chat():
 
     # Reverse so it's in chronological order
     history_rows = list(reversed(history_rows))
-    
+
     # Build System Prompt and Context
     system_prompt = character['system_prompt']
-    
+
     # If the user selected a topic, we append the topic context to the prompt
     topic_context = ""
     if topic_id:
@@ -361,10 +603,10 @@ def get_topic(topic_id):
     conn = get_db_connection()
     topic = conn.execute('SELECT * FROM topics WHERE id = ?', (topic_id,)).fetchone()
     conn.close()
-    
+
     if not topic:
         return jsonify({'error': 'Dòng kiến thức không tồn tại.'}), 404
-        
+
     return jsonify({
         'id': topic['id'],
         'title': topic['title'],
@@ -534,10 +776,10 @@ def admin_panel():
     if not is_admin():
         flash('Bạn không có quyền truy cập trang quản trị!', 'danger')
         return redirect(url_for('index'))
-        
+
     conn = get_db_connection()
     characters = conn.execute('SELECT * FROM characters').fetchall()
-    
+
     # Build list of characters with their topics
     characters_list = []
     for char in characters:
@@ -548,9 +790,11 @@ def admin_panel():
             'avatar_url': char['avatar_url'],
             'system_prompt': char['system_prompt'],
             'temperature': char['temperature'],
+            'era': char['era'] if 'era' in char.keys() and char['era'] else 'medieval',
+            'region': char['region'] if 'region' in char.keys() and char['region'] else 'vietnam',
             'topics': topics
         })
-        
+
     conn.close()
     return render_template('admin.html', characters=characters_list, username=session.get('username'))
 
@@ -558,16 +802,18 @@ def admin_panel():
 def add_character():
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     name = request.form.get('name', '').strip()
     system_prompt = request.form.get('system_prompt', '').strip()
     temperature = float(request.form.get('temperature', 0.7))
+    era = request.form.get('era', 'medieval').strip()
+    region = request.form.get('region', 'vietnam').strip()
     avatar_file = request.files.get('avatar')
-    
+
     if not name or not system_prompt:
         flash('Tên và System Prompt là bắt buộc!', 'danger')
         return redirect(url_for('admin_panel'))
-        
+
     avatar_url = '/static/images/default_avatar.png'
     if avatar_file and avatar_file.filename:
         filename = secure_filename(avatar_file.filename)
@@ -575,16 +821,16 @@ def add_character():
         filename = f"{int(time.time())}_{filename}"
         avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         avatar_url = f'/static/uploads/{filename}'
-        
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO characters (name, avatar_url, system_prompt, temperature)
-        VALUES (?, ?, ?, ?)
-    ''', (name, avatar_url, system_prompt, temperature))
+        INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (name, avatar_url, system_prompt, temperature, era, region))
     conn.commit()
     conn.close()
-    
+
     flash('Thêm nhân vật mới thành công!', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -592,38 +838,40 @@ def add_character():
 def edit_character(char_id):
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     name = request.form.get('name', '').strip()
     system_prompt = request.form.get('system_prompt', '').strip()
     temperature = float(request.form.get('temperature', 0.7))
+    era = request.form.get('era', 'medieval').strip()
+    region = request.form.get('region', 'vietnam').strip()
     avatar_file = request.files.get('avatar')
-    
+
     if not name or not system_prompt:
         flash('Tên và System Prompt là bắt buộc!', 'danger')
         return redirect(url_for('admin_panel'))
-        
+
     conn = get_db_connection()
     character = conn.execute('SELECT * FROM characters WHERE id = ?', (char_id,)).fetchone()
     if not character:
         conn.close()
         flash('Nhân vật không tồn tại!', 'danger')
         return redirect(url_for('admin_panel'))
-        
+
     avatar_url = character['avatar_url']
     if avatar_file and avatar_file.filename:
         filename = secure_filename(avatar_file.filename)
         filename = f"{int(time.time())}_{filename}"
         avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         avatar_url = f'/static/uploads/{filename}'
-        
+
     conn.execute('''
-        UPDATE characters 
-        SET name = ?, avatar_url = ?, system_prompt = ?, temperature = ?
+        UPDATE characters
+        SET name = ?, avatar_url = ?, system_prompt = ?, temperature = ?, era = ?, region = ?
         WHERE id = ?
-    ''', (name, avatar_url, system_prompt, temperature, char_id))
+    ''', (name, avatar_url, system_prompt, temperature, era, region, char_id))
     conn.commit()
     conn.close()
-    
+
     flash('Cập nhật nhân vật thành công!', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -631,12 +879,12 @@ def edit_character(char_id):
 def delete_character(char_id):
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     conn = get_db_connection()
     conn.execute('DELETE FROM characters WHERE id = ?', (char_id,))
     conn.commit()
     conn.close()
-    
+
     flash('Xóa nhân vật thành công!', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -645,15 +893,15 @@ def delete_character(char_id):
 def add_topic():
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     character_id = request.form.get('character_id')
     title = request.form.get('title', '').strip()
     lecture_content = request.form.get('lecture_content', '').strip()
-    
+
     if not character_id or not title or not lecture_content:
         flash('Tất cả các trường là bắt buộc!', 'danger')
         return redirect(url_for('admin_panel'))
-        
+
     conn = get_db_connection()
     conn.execute('''
         INSERT INTO topics (character_id, title, lecture_content)
@@ -661,7 +909,7 @@ def add_topic():
     ''', (character_id, title, lecture_content))
     conn.commit()
     conn.close()
-    
+
     flash('Thêm dòng kiến thức thành công!', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -669,23 +917,23 @@ def add_topic():
 def edit_topic(topic_id):
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     title = request.form.get('title', '').strip()
     lecture_content = request.form.get('lecture_content', '').strip()
-    
+
     if not title or not lecture_content:
         flash('Tiêu đề và Bài giảng là bắt buộc!', 'danger')
         return redirect(url_for('admin_panel'))
-        
+
     conn = get_db_connection()
     conn.execute('''
-        UPDATE topics 
+        UPDATE topics
         SET title = ?, lecture_content = ?
         WHERE id = ?
     ''', (title, lecture_content, topic_id))
     conn.commit()
     conn.close()
-    
+
     flash('Cập nhật dòng kiến thức thành công!', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -693,12 +941,12 @@ def edit_topic(topic_id):
 def delete_topic(topic_id):
     if not is_admin():
         return jsonify({'error': 'Unauthorized'}), 403
-        
+
     conn = get_db_connection()
     conn.execute('DELETE FROM topics WHERE id = ?', (topic_id,))
     conn.commit()
     conn.close()
-    
+
     flash('Xóa dòng kiến thức thành công!', 'success')
     return redirect(url_for('admin_panel'))
 

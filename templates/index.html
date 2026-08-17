@@ -1,23 +1,156 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard Vĩ Nhân - Khám Phá Lịch Sử{% endblock %}
+{% block title %}EduTM - Cổng Thời Gian Tri Thức & Du Hành Lịch Sử{% endblock %}
 
 {% block content %}
-<div class="row mb-5 text-center mt-3">
-    <div class="col-lg-8 mx-auto">
-        <h1 class="display-4 title-gradient mb-3">EduTM - Cổng thời gian tri thức</h1>
-        <p class="lead text-secondary">
-            Xóa bỏ sự khô khan của lớp học truyền thống. Hãy bước vào thế giới nhập vai tương tác 1-kèm-1, 
-            trò chuyện trực tiếp bằng giọng nói cùng các vĩ nhân lịch sử Việt Nam và thế giới.
-        </p>
+<!-- Hero / Header Section Overview -->
+<div class="hero-section glass-panel mb-5 p-4 p-md-5 position-relative overflow-hidden">
+    <div class="hero-bg-glow"></div>
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <span class="badge bg-purple-glow text-purple px-3 py-2 rounded-pill fs-6 mb-3 fw-semibold">
+                <i class="fa-solid fa-sparkles me-1"></i> Trải Nghiệm Học Lịch Sử Thế Hệ Mới
+            </span>
+            <h1 class="display-4 fw-extrabold title-gradient mb-3">
+                EduTM - Cổng Thời Gian Tri Thức
+            </h1>
+            <p class="lead text-light opacity-90 mb-4">
+                Xóa bỏ sự khô khan của trang sách lịch sử truyền thống. Hãy mở cánh cổng thời gian để trực tiếp đối thoại, lắng nghe bài giảng và trao đổi bằng giọng nói với các **vĩ nhân lịch sử Việt Nam & Thế giới** thông qua công nghệ AI đỉnh cao!
+            </p>
+            <div class="d-flex flex-wrap gap-3 mb-4">
+                {% if session.get('user_id') %}
+                    <a href="#charactersGrid" class="btn btn-register-custom btn-lg">
+                        <i class="fa-solid fa-compass me-2"></i> Khám Phá Vĩ Nhân
+                    </a>
+                    <a href="{{ url_for('timeline_view') }}" class="btn nav-btn-glass btn-lg text-white">
+                        <i class="fa-solid fa-timeline me-2 text-cyan"></i> Hành Trình Lịch Sử
+                    </a>
+                    <a href="{{ url_for('knowledge_view') }}" class="btn nav-btn-glass btn-lg text-white">
+                        <i class="fa-solid fa-book-bookmark me-2 text-warning"></i> Kho Tri Thức
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-register-custom btn-lg">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i> Đăng Nhập Khám Phá
+                    </a>
+                    <a href="{{ url_for('register') }}" class="btn nav-btn-glass btn-lg text-white">
+                        <i class="fa-solid fa-user-plus me-2 text-cyan"></i> Đăng Ký Tài Khoản
+                    </a>
+                {% endif %}
+            </div>
+            <!-- Features Highlights -->
+            <div class="row g-3 text-start border-top border-secondary pt-3 mt-2">
+                <div class="col-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-purple fs-4"></i>
+                        <div>
+                            <div class="fw-bold text-white fs-5">3 Thời Kỳ</div>
+                            <small class="text-muted-custom">Cổ đại - Trung - Hiện đại</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-comments text-cyan fs-4"></i>
+                        <div>
+                            <div class="fw-bold text-white fs-5">Interactive AI</div>
+                            <small class="text-muted-custom">Đối thoại 1-kèm-1</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-headset text-pink fs-4"></i>
+                        <div>
+                            <div class="fw-bold text-white fs-5">Voice & TTS</div>
+                            <small class="text-muted-custom">Giọng nói Tiếng Việt</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Ảnh minh họa hấp dẫn -->
+        <div class="col-lg-5 position-relative">
+            <div class="hero-image-wrapper">
+                <img src="/static/images/hero_time_portal.png" onerror="this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop'" alt="Cổng Thời Gian EduTM" class="img-fluid rounded-4 shadow-lg hero-img">
+                <div class="floating-badge badge-1">
+                    <i class="fa-solid fa-hourglass-half text-warning me-2"></i> Cổng Thời Gian
+                </div>
+                <div class="floating-badge badge-2">
+                    <i class="fa-solid fa-sparkles text-cyan me-2"></i> Trí Tuệ AI
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-6 mx-auto">
-        <div class="glass-panel py-3 px-4 d-flex align-items-center gap-3">
+{% if session.get('user_id') %}
+<!-- Mốc Hành Trình Lịch Sử Nhanh (Chỉ hiển thị SAU KHU ĐĂNG NHẬP THÀNH CÔNG) -->
+<div class="row mb-5 g-4">
+    <div class="col-12 text-center mb-2">
+        <h2 class="title-gradient h3 mb-2"><i class="fa-solid fa-layer-group me-2"></i>Các Mốc Thời Gian Lịch Sử</h2>
+        <p class="text-secondary">Khám phá chuỗi mốc lịch sử thời kỳ Cổ Đại, Trung Đại & Hiện Đại</p>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel text-center h-100 p-4 era-card" onclick="window.location.href='{{ url_for('timeline_view') }}?era=ancient'">
+            <div class="era-icon-wrapper mb-3 text-warning">
+                <i class="fa-solid fa-landmark fa-2x"></i>
+            </div>
+            <h4 class="text-white fw-bold">Thời Cổ Đại</h4>
+            <div class="d-flex justify-content-center gap-1 mb-2">
+                <span class="badge bg-dark-glass text-warning border border-warning fs-7"><i class="fa-solid fa-flag me-1"></i> Việt Nam</span>
+                <span class="badge bg-dark-glass text-warning border border-warning fs-7"><i class="fa-solid fa-globe me-1"></i> Thế Giới</span>
+            </div>
+            <p class="text-secondary fs-6">
+                Thời kỳ Hùng Vương & Nền văn minh sông Hồng tại Việt Nam kết hợp các nền văn minh Ai Cập, Hy Lạp - La Mã cổ đại.
+            </p>
+            <span class="btn btn-sm btn-outline-warning rounded-pill mt-2">Khám phá Cổ đại <i class="fa-solid fa-arrow-right ms-1"></i></span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel text-center h-100 p-4 era-card" onclick="window.location.href='{{ url_for('timeline_view') }}?era=medieval'">
+            <div class="era-icon-wrapper mb-3 text-purple">
+                <i class="fa-solid fa-shield-halbed fa-2x"></i>
+            </div>
+            <h4 class="text-white fw-bold">Thời Trung Đại</h4>
+            <div class="d-flex justify-content-center gap-1 mb-2">
+                <span class="badge bg-dark-glass text-purple border border-purple fs-7"><i class="fa-solid fa-flag me-1"></i> Việt Nam</span>
+                <span class="badge bg-dark-glass text-purple border border-purple fs-7"><i class="fa-solid fa-globe me-1"></i> Thế Giới</span>
+            </div>
+            <p class="text-secondary fs-6">
+                Trận Bạch Đằng, Hào khí Đông A thời Trần ở Việt Nam song hành cùng Phong kiến Phương Tây & Văn hóa Phục Hưng.
+            </p>
+            <span class="btn btn-sm btn-outline-purple rounded-pill mt-2">Khám phá Trung đại <i class="fa-solid fa-arrow-right ms-1"></i></span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel text-center h-100 p-4 era-card" onclick="window.location.href='{{ url_for('timeline_view') }}?era=modern'">
+            <div class="era-icon-wrapper mb-3 text-cyan">
+                <i class="fa-solid fa-rocket fa-2x"></i>
+            </div>
+            <h4 class="text-white fw-bold">Thời Hiện Đại</h4>
+            <div class="d-flex justify-content-center gap-1 mb-2">
+                <span class="badge bg-dark-glass text-info border border-info fs-7"><i class="fa-solid fa-flag me-1"></i> Việt Nam</span>
+                <span class="badge bg-dark-glass text-info border border-info fs-7"><i class="fa-solid fa-globe me-1"></i> Thế Giới</span>
+            </div>
+            <p class="text-secondary fs-6">
+                Việt Nam Đổi Mới & Thống Nhất hòa mình cùng Cách mạng Khoa học Kỹ thuật, Thuyết tương đối và Kỷ nguyên Vũ trụ.
+            </p>
+            <span class="btn btn-sm btn-outline-info rounded-pill mt-2">Khám phá Hiện đại <i class="fa-solid fa-arrow-right ms-1"></i></span>
+        </div>
+    </div>
+</div>
+
+<!-- Thanh tìm kiếm & Danh sách Vĩ nhân AI (Chỉ hiển thị SAU KHU ĐĂNG NHẬP THÀNH CÔNG) -->
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6 mb-3 mb-md-0">
+        <h3 class="text-white fw-bold mb-0 d-flex align-items-center gap-2">
+            <i class="fa-solid fa-users-viewfinder text-purple"></i> Chọn Vĩ Nhân Đối Thoại
+        </h3>
+    </div>
+    <div class="col-md-6">
+        <div class="glass-panel py-2 px-3 d-flex align-items-center gap-3">
             <i class="fa-solid fa-magnifying-glass text-secondary"></i>
-            <input type="text" id="searchCharacter" class="form-control bg-transparent border-0 text-white placeholder-secondary" placeholder="Tìm kiếm vĩ nhân lịch sử (Einstein, Trần Hưng Đạo...)" style="box-shadow: none;">
+            <input type="text" id="searchCharacter" class="form-control bg-transparent border-0 text-white placeholder-secondary" placeholder="Tìm kiếm vĩ nhân (Einstein, Trần Hưng Đạo...)" style="box-shadow: none;">
         </div>
     </div>
 </div>
@@ -61,7 +194,7 @@
     document.getElementById('searchCharacter').addEventListener('input', function(e) {
         const query = e.target.value.toLowerCase().trim();
         const cols = document.querySelectorAll('.character-col');
-        
+
         cols.forEach(col => {
             const name = col.getAttribute('data-name');
             if (name.includes(query)) {
@@ -72,4 +205,26 @@
         });
     });
 </script>
+{% else %}
+<!-- Banner Mời Đăng Nhập Để Đối Thoại Cùng Vĩ Nhân & Mở Khóa Tính Năng -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="glass-panel text-center p-4 p-md-5 border-purple border-1 position-relative">
+            <i class="fa-solid fa-user-astronaut text-purple display-4 mb-3"></i>
+            <h3 class="text-white fw-bold mb-2">Đăng Nhập Để Đối Thoại Cùng Vĩ Nhân & Mở Khóa Cổng Thời Gian</h3>
+            <p class="text-secondary lead max-w-700 mx-auto mb-4 fs-6">
+                Tính năng đối thoại trực tiếp bằng giọng nói cùng các Vĩ nhân AI, khám phá Hành trình Lịch sử và Kho Tri Thức độc quyền dành riêng cho học viên đã đăng nhập EduTM.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('login') }}" class="btn btn-register-custom px-4 btn-lg">
+                    <i class="fa-solid fa-right-to-bracket me-2"></i> Đăng Nhập Ngay
+                </a>
+                <a href="{{ url_for('register') }}" class="btn nav-btn-glass text-white px-4 btn-lg">
+                    <i class="fa-solid fa-user-plus me-2 text-cyan"></i> Tạo Tài Khoản Mới
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

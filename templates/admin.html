@@ -20,16 +20,17 @@
     <div class="col-12">
         <div class="glass-panel p-4">
             <h3 class="title-cyan-gradient mb-4"><i class="fa-solid fa-users"></i> Danh sách Vĩ nhân</h3>
-            
+
             <div class="table-responsive">
                 <table class="custom-table">
                     <thead>
                         <tr>
                             <th>Ảnh</th>
                             <th>Tên nhân vật</th>
+                            <th>Thời kỳ & Khu vực</th>
                             <th>System Prompt (Tính cách AI)</th>
-                            <th>Nhiệt độ (Temp)</th>
-                            <th>Dòng kiến thức (Bài giảng)</th>
+                            <th>Nhiệt độ</th>
+                            <th>Dòng kiến thức</th>
                             <th>Hành động</th>
                         </tr>
                     </thead>
@@ -44,6 +45,14 @@
                                     {% endif %}
                                 </td>
                                 <td class="fw-bold">{{ char.name }}</td>
+                                <td>
+                                    <span class="badge bg-dark border border-warning text-warning me-1">
+                                        {% if char.era == 'ancient' %}Cổ Đại{% elif char.era == 'medieval' %}Trung Đại{% else %}Hiện Đại{% endif %}
+                                    </span>
+                                    <span class="badge bg-dark border border-info text-info">
+                                        {% if char.region == 'vietnam' %}Việt Nam{% else %}Thế Giới{% endif %}
+                                    </span>
+                                </td>
                                 <td>
                                     <small class="text-secondary d-block" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ char.system_prompt }}">
                                         {{ char.system_prompt }}
@@ -76,7 +85,7 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-primary" onclick="openEditCharModal({{ char.id }}, '{{ char.name | replace("'", "\\'") }}', '{{ char.system_prompt | replace("\n", "\\n") | replace("'", "\\'") }}', {{ char.temperature }})">
+                                        <button class="btn btn-sm btn-primary" onclick="openEditCharModal({{ char.id }}, '{{ char.name | replace("'", "\\'") }}', '{{ char.system_prompt | replace("\n", "\\n") | replace("'", "\\'") }}', {{ char.temperature }}, '{{ char.era }}', '{{ char.region }}')">
                                             <i class="fa-solid fa-pen"></i> Sửa
                                         </button>
                                         <form action="{{ url_for('delete_character', char_id=char.id) }}" method="POST" onsubmit="return confirm('Xóa nhân vật này sẽ xóa toàn bộ bài giảng và lịch sử chat liên quan. Bạn có chắc chắn?')">
@@ -115,17 +124,35 @@
                         <label for="name" class="form-label text-secondary fw-semibold">Tên nhân vật lịch sử</label>
                         <input type="text" class="form-control auth-form-input" id="name" name="name" required placeholder="Ví dụ: Quang Trung - Nguyễn Huệ">
                     </div>
-                    
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="era" class="form-label text-secondary fw-semibold">Thời kỳ Lịch sử</label>
+                            <select class="form-select auth-form-input bg-dark text-white" id="era" name="era">
+                                <option value="ancient">Cổ Đại</option>
+                                <option value="medieval" selected>Trung Đại</option>
+                                <option value="modern">Hiện Đại</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="region" class="form-label text-secondary fw-semibold">Khu vực</label>
+                            <select class="form-select auth-form-input bg-dark text-white" id="region" name="region">
+                                <option value="vietnam" selected>Việt Nam</option>
+                                <option value="world">Thế Giới</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="avatar" class="form-label text-secondary fw-semibold">Ảnh đại diện (Avatar)</label>
                         <input type="file" class="form-control auth-form-input" id="avatar" name="avatar" accept="image/*">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="system_prompt" class="form-label text-secondary fw-semibold">System Prompt (Quy định tính cách, xưng hô của AI)</label>
                         <textarea class="form-control auth-form-input" id="system_prompt" name="system_prompt" rows="5" required placeholder="Bạn là Quang Trung Hoàng đế... Hãy xưng hô 'Trẫm' và giảng dạy học sinh..."></textarea>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="temperature" class="form-label text-secondary fw-semibold">Độ sáng tạo của AI (Temperature: 0.1 đến 1.0)</label>
                         <input type="number" class="form-control auth-form-input" id="temperature" name="temperature" min="0.1" max="1.0" step="0.1" value="0.7">
@@ -154,17 +181,35 @@
                         <label for="edit_name" class="form-label text-secondary fw-semibold">Tên nhân vật lịch sử</label>
                         <input type="text" class="form-control auth-form-input" id="edit_name" name="name" required>
                     </div>
-                    
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_era" class="form-label text-secondary fw-semibold">Thời kỳ Lịch sử</label>
+                            <select class="form-select auth-form-input bg-dark text-white" id="edit_era" name="era">
+                                <option value="ancient">Cổ Đại</option>
+                                <option value="medieval">Trung Đại</option>
+                                <option value="modern">Hiện Đại</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_region" class="form-label text-secondary fw-semibold">Khu vực</label>
+                            <select class="form-select auth-form-input bg-dark text-white" id="edit_region" name="region">
+                                <option value="vietnam">Việt Nam</option>
+                                <option value="world">Thế Giới</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="edit_avatar" class="form-label text-secondary fw-semibold">Thay đổi ảnh đại diện (Để trống nếu giữ nguyên)</label>
                         <input type="file" class="form-control auth-form-input" id="edit_avatar" name="avatar" accept="image/*">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="edit_system_prompt" class="form-label text-secondary fw-semibold">System Prompt (Tính cách AI)</label>
                         <textarea class="form-control auth-form-input" id="edit_system_prompt" name="system_prompt" rows="5" required></textarea>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="edit_temperature" class="form-label text-secondary fw-semibold">Nhiệt độ (Temperature)</label>
                         <input type="number" class="form-control auth-form-input" id="edit_temperature" name="temperature" min="0.1" max="1.0" step="0.1">
@@ -194,7 +239,7 @@
                         <label for="topic_title" class="form-label text-secondary fw-semibold">Tiêu đề chủ đề</label>
                         <input type="text" class="form-control auth-form-input" id="topic_title" name="title" required placeholder="Ví dụ: Đại phá quân Thanh">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="topic_lecture" class="form-label text-secondary fw-semibold">Nội dung bài giảng cốt lõi (Textarea văn bản lớn)</label>
                         <textarea class="form-control auth-form-input" id="topic_lecture" name="lecture_content" rows="6" required placeholder="Viết chi tiết bài giảng ở đây để nhân vật lịch sử nói và dùng làm tài liệu gốc..."></textarea>
@@ -223,7 +268,7 @@
                         <label for="edit_topic_title" class="form-label text-secondary fw-semibold">Tiêu đề chủ đề</label>
                         <input type="text" class="form-control auth-form-input" id="edit_topic_title" name="title" required>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="edit_topic_lecture" class="form-label text-secondary fw-semibold">Nội dung bài giảng cốt lõi</label>
                         <textarea class="form-control auth-form-input" id="edit_topic_lecture" name="lecture_content" rows="6" required></textarea>

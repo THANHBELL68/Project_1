@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Kho Tri Thức Lịch Sử - EduTM{% endblock %}
+
+{% block content %}
+<div class="row mb-4 text-center">
+    <div class="col-lg-8 mx-auto">
+        <h1 class="display-5 fw-bold title-gradient mb-2"><i class="fa-solid fa-book-journal-whills text-cyan me-2"></i>Kho Tri Thức Lịch Sử</h1>
+        <p class="text-secondary lead">
+            Lưu trữ phong phú tài liệu, bài viết phân tích, tư liệu video quý giá và hệ thống trắc nghiệm kiểm tra kiến thức lịch sử hấp dẫn.
+        </p>
+    </div>
+</div>
+
+<!-- Search & Category Filter -->
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <div class="glass-panel p-2 d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-sm btn-register-custom px-3 active-category-btn" onclick="filterCategory('all')">Tất cả</button>
+            <button class="btn btn-sm nav-btn-glass px-3" onclick="filterCategory('article')"><i class="fa-solid fa-newspaper me-1"></i> Bài viết</button>
+            <button class="btn btn-sm nav-btn-glass px-3" onclick="filterCategory('video')"><i class="fa-solid fa-circle-play me-1"></i> Video tư liệu</button>
+            <button class="btn btn-sm nav-btn-glass px-3" onclick="filterCategory('quiz')"><i class="fa-solid fa-clipboard-question me-1"></i> Trắc nghiệm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Knowledge Items Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="knowledgeGrid">
+    <!-- Item 1: Trắc nghiệm -->
+    <div class="col knowledge-item" data-type="quiz">
+        <div class="glass-panel h-100 p-4 d-flex flex-direction-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="badge bg-danger text-white"><i class="fa-solid fa-circle-question me-1"></i> Trắc Nghiệm</span>
+                    <small class="text-muted-custom">10 Câu hỏi</small>
+                </div>
+                <h4 class="text-white fw-bold mb-2">Thử Thách: Hào Khí Đông A Thời Trần</h4>
+                <p class="text-secondary fs-6">
+                    Kiểm tra hiểu biết của bạn về 3 lần kháng chiến chống quân Nguyên Mông, Hịch Tướng Sĩ và trận chiến sông Bạch Đằng.
+                </p>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-outline-danger w-100 rounded-3" onclick="startQuizModal()">
+                    <i class="fa-solid fa-play me-1"></i> Làm bài trắc nghiệm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item 2: Video -->
+    <div class="col knowledge-item" data-type="video">
+        <div class="glass-panel h-100 p-4 d-flex flex-direction-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="badge bg-primary text-white"><i class="fa-solid fa-video me-1"></i> Video Tư Liệu</span>
+                    <small class="text-muted-custom">15 Phút</small>
+                </div>
+                <h4 class="text-white fw-bold mb-2">Albert Einstein & Hành Trình Khám Phá Thuyết Tương Đối</h4>
+                <p class="text-secondary fs-6">
+                    Thước phim tư liệu hoạt họa giải thích trực quan về vận tốc ánh sáng, sự bóp méo thời gian và công thức $E=mc^2$.
+                </p>
+            </div>
+            <div class="mt-3">
+                <a href="https://www.youtube.com/watch?v=0rockf8I09U" target="_blank" class="btn btn-outline-primary w-100 rounded-3">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Xem Video
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item 3: Bài viết -->
+    <div class="col knowledge-item" data-type="article">
+        <div class="glass-panel h-100 p-4 d-flex flex-direction-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="badge bg-success text-white"><i class="fa-solid fa-file-lines me-1"></i> Bài Viết</span>
+                    <small class="text-muted-custom">Đọc 5 phút</small>
+                </div>
+                <h4 class="text-white fw-bold mb-2">Nghệ Thuật Quân Sự "Vườn Không Nhà Trống"</h4>
+                <p class="text-secondary fs-6">
+                    Phân tích tư duy chiến lược đỉnh cao của Trần Hưng Đạo khi triệt hạ nguồn tiếp tế lương thực của địch để phản công bứt phá.
+                </p>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-outline-success w-100 rounded-3" onclick="alert('Đang tải bài viết chuyên sâu về Chiến thuật Vườn không nhà trống...')">
+                    <i class="fa-solid fa-book-open me-1"></i> Đọc bài viết
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Quiz Modal -->
+<div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-secondary text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-award me-2"></i>Trắc Nghiệm Lịch Sử</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quizQuestionBox">
+                    <p class="fw-bold fs-5 mb-3" id="quizQuestionText">Câu 1: Vị tướng nào đã lãnh đạo quân dân nhà Trần đánh tan quân Nguyên Mông lần thứ hai và thứ ba?</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn nav-btn-glass text-start py-2" onclick="checkAnswer(true, this)">A. Hưng Đạo Đại Vương Trần Quốc Tuấn</button>
+                        <button class="btn nav-btn-glass text-start py-2" onclick="checkAnswer(false, this)">B. Lý Thường Kiệt</button>
+                        <button class="btn nav-btn-glass text-start py-2" onclick="checkAnswer(false, this)">C. Ngô Quyền</button>
+                        <button class="btn nav-btn-glass text-start py-2" onclick="checkAnswer(false, this)">D. Quang Trung - Nguyễn Huệ</button>
+                    </div>
+                </div>
+                <div id="quizResultBox" class="mt-3 d-none alert alert-success bg-transparent border-success text-white">
+                    <i class="fa-solid fa-circle-check text-success me-2 fs-5"></i>
+                    <span>Chính xác! Trần Quốc Tuấn (Trần Hưng Đạo) là vị Tiết chế thống lĩnh lừng lẫy của nhà Trần.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterCategory(type) {
+        const items = document.querySelectorAll('.knowledge-item');
+        items.forEach(item => {
+            if (type === 'all' || item.getAttribute('data-type') === type) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function startQuizModal() {
+        const quizModal = new bootstrap.Modal(document.getElementById('quizModal'));
+        document.getElementById('quizResultBox').classList.add('d-none');
+        quizModal.show();
+    }
+
+    function checkAnswer(isCorrect, btn) {
+        const resBox = document.getElementById('quizResultBox');
+        resBox.classList.remove('d-none');
+        if (isCorrect) {
+            resBox.className = 'mt-3 alert alert-success bg-transparent border-success text-success';
+            resBox.innerHTML = '<i class="fa-solid fa-circle-check me-2 fs-5"></i> Chính xác! Bạn nhận được +100 điểm tri thức EduTM.';
+        } else {
+            resBox.className = 'mt-3 alert alert-danger bg-transparent border-danger text-danger';
+            resBox.innerHTML = '<i class="fa-solid fa-circle-xmark me-2 fs-5"></i> Rất tiếc! Đáp án đúng là A. Hưng Đạo Đại Vương Trần Quốc Tuấn.';
+        }
+    }
+</script>
+{% endblock %}

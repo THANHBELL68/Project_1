@@ -19,42 +19,85 @@
     <!-- Background Space-Time Effect -->
     <div class="space-bg"></div>
     <div class="space-stars"></div>
-    
+
     <!-- Custom Glassmorphism Navbar -->
-    <nav class="navbar navbar-expand-lg custom-navbar">
+    <nav class="navbar navbar-expand-lg custom-navbar sticky-top">
         <div class="container">
-            <a class="navbar-brand-custom" href="{{ url_for('index') }}">
-                <i class="fa-solid fa-hourglass-half text-glow animate-spin-slow"></i>
-                <span>EduTM - Cổng thời gian tri thức</span>
+            <!-- 1. Cụm nhận diện (Bên trái) -->
+            <a class="navbar-brand-custom d-flex align-items-center gap-2" href="{{ url_for('index') }}">
+                <i class="fa-solid fa-hourglass-half text-glow animate-spin-slow text-purple"></i>
+                <span class="brand-title">EduTM</span>
+                <span class="brand-slogan d-none d-md-inline-block text-muted-custom border-start ps-2 ms-1 fs-6 fw-normal">Cổng thời gian tri thức</span>
             </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"><i class="fa-solid fa-bars text-white"></i></span>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"><i class="fa-solid fa-bars text-white fs-4"></i></span>
             </button>
-            
+
+            <!-- 2. Cụm điều hướng nội dung chính (Xếp gần nhau) -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-2 my-2 my-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link nav-btn-glass {% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}">
+                            <i class="fa-solid fa-house me-1"></i> Trang chủ
+                        </a>
+                    </li>
                     {% if session.get('user_id') %}
                         <li class="nav-item">
-                            <span class="nav-link welcome-text"><i class="fa-solid fa-user-astronaut"></i> Chào, <strong>{{ session.get('username') }}</strong></span>
+                            <a class="nav-link nav-btn-glass {% if request.endpoint == 'timeline_view' %}active-nav{% endif %}" href="{{ url_for('timeline_view') }}">
+                                <i class="fa-solid fa-timeline me-1"></i> Hành trình Lịch sử
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link nav-btn-glass" href="{{ url_for('index') }}"><i class="fa-solid fa-compass"></i> Khám phá</a>
-                        </li>
-                        {% if session.get('role') == 'admin' %}
-                            <li class="nav-item">
-                                <a class="nav-link nav-btn-glass text-warning" href="{{ url_for('admin_panel') }}"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
-                            </li>
-                        {% endif %}
-                        <li class="nav-item ms-2">
-                            <a class="btn btn-logout" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+                            <a class="nav-link nav-btn-glass {% if request.endpoint == 'knowledge_view' %}active-nav{% endif %}" href="{{ url_for('knowledge_view') }}">
+                                <i class="fa-solid fa-book-bookmark me-1"></i> Kho Tri Thức
+                            </a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link nav-btn-glass" href="{{ url_for('login') }}"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</a>
+                            <a class="nav-link nav-btn-glass {% if request.endpoint == 'about_view' %}active-nav{% endif %}" href="{{ url_for('about_view') }}">
+                                <i class="fa-solid fa-circle-info me-1"></i> Giới thiệu
+                            </a>
                         </li>
-                        <li class="nav-item ms-2">
-                            <a class="btn btn-register-custom" href="{{ url_for('register') }}"><i class="fa-solid fa-user-plus"></i> Đăng ký</a>
+                        <li class="nav-item">
+                            <a class="nav-link nav-btn-glass {% if request.endpoint == 'contact_view' %}active-nav{% endif %}" href="{{ url_for('contact_view') }}">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Liên hệ
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if session.get('user_id') %}
+                        <li class="nav-item dropdown ms-lg-1">
+                            <a class="nav-link dropdown-toggle text-white welcome-text d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="user-avatar-badge"><i class="fa-solid fa-user-astronaut text-purple"></i></span>
+                                <span><strong>{{ session.get('username') }}</strong></span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end glass-dropdown" aria-labelledby="userDropdown">
+                                {% if session.get('role') == 'admin' %}
+                                    <li>
+                                        <a class="dropdown-item text-warning" href="{{ url_for('admin_panel') }}">
+                                            <i class="fa-solid fa-user-shield me-2"></i> Quản trị hệ thống
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider border-secondary"></li>
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                        <i class="fa-solid fa-right-from-bracket me-2"></i> Đăng xuất
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item ms-lg-1">
+                            <a class="nav-link nav-btn-glass" href="{{ url_for('login') }}">
+                                <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-register-custom" href="{{ url_for('register') }}">
+                                <i class="fa-solid fa-user-plus me-1"></i> Đăng ký
+                            </a>
                         </li>
                     {% endif %}
                 </ul>

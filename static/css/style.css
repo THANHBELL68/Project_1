@@ -1339,3 +1339,207 @@ body {
     word-break: break-all;
     user-select: all;
 }
+
+
+/* Custom Brand & Navigation Enhancements */
+.brand-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffffff 30%, var(--neon-purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-slogan {
+    font-size: 0.85rem !important;
+    color: var(--text-secondary) !important;
+    font-weight: 400 !important;
+}
+
+.text-purple { color: var(--neon-purple) !important; }
+.text-cyan { color: var(--neon-cyan) !important; }
+.text-pink { color: var(--neon-pink) !important; }
+.text-muted-custom { color: var(--text-secondary) !important; opacity: 0.8; }
+
+.active-nav {
+    background: rgba(167, 139, 250, 0.15) !important;
+    border-color: rgba(167, 139, 250, 0.3) !important;
+    color: var(--neon-purple) !important;
+}
+
+/* Glass Dropdown Menu */
+.glass-dropdown {
+    background: rgba(10, 11, 30, 0.9) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.glass-dropdown .dropdown-item {
+    color: var(--text-primary);
+    padding: 0.6rem 1.2rem;
+    transition: all 0.2s ease;
+}
+
+.glass-dropdown .dropdown-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+/* Hero Section */
+.hero-section {
+    background: radial-gradient(circle at 80% 20%, rgba(167, 139, 250, 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 10% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
+                rgba(10, 11, 30, 0.6);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+}
+
+.hero-bg-glow {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: var(--neon-purple);
+    filter: blur(120px);
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+.hero-image-wrapper {
+    position: relative;
+    padding: 10px;
+}
+
+.hero-img {
+    border: 2px solid var(--glass-border);
+    transition: transform 0.5s ease;
+}
+
+.hero-img:hover {
+    transform: scale(1.02);
+}
+
+.floating-badge {
+    position: absolute;
+    background: rgba(10, 11, 30, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    animation: floatBadge 4s ease-in-out infinite alternate;
+}
+
+.badge-1 { top: 10%; left: -10px; }
+.badge-2 { bottom: 10%; right: -10px; animation-delay: 2s; }
+
+@keyframes floatBadge {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-10px); }
+}
+
+/* Era Cards (Cổ Đại, Trung Đại, Hiện Đại) */
+.era-card {
+    cursor: pointer;
+    transition: all 0.35s ease;
+}
+
+.era-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--neon-purple);
+    box-shadow: var(--shadow-glow-purple);
+}
+
+.bg-purple-glow {
+    background: rgba(167, 139, 250, 0.15) !important;
+}
+
+.bg-cyan-glow {
+    background: rgba(34, 211, 238, 0.15) !important;
+}
+
+.bg-pink-glow {
+    background: rgba(244, 114, 182, 0.15) !important;
+}
+
+/* Social Login Buttons */
+.social-login-divider {
+    position: relative;
+    text-align: center;
+}
+
+.social-login-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: var(--glass-border);
+    z-index: 0;
+}
+
+.social-login-divider span {
+    position: relative;
+    z-index: 1;
+}
+
+.bg-dark-panel {
+    background: #0a0b1e;
+}
+
+.bg-dark-glass {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.btn-social {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-social:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.bg-cyan-gradient {
+    background: linear-gradient(135deg, var(--neon-cyan), #0284c7) !important;
+    color: #fff !important;
+}
+
+.btn-era-tab {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px !important;
+    transition: all 0.3s ease;
+}
+
+.btn-era-tab.active {
+    background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink)) !important;
+    box-shadow: var(--shadow-glow-purple);
+    border-color: transparent !important;
+}
+
+.password-rules-box {
+    border: 1px solid var(--glass-border);
+}
+
+.rule-icon {
+    font-size: 0.85rem;
+}

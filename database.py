@@ -12,18 +12,39 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Create users table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
+        phone_number TEXT UNIQUE,
         password_hash TEXT NOT NULL,
-        role TEXT DEFAULT 'student'
+        role TEXT DEFAULT 'student',
+        status TEXT DEFAULT 'pending',
+        verification_token TEXT,
+        otp_code TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     ''')
-    
+
+    # Migration: add new columns to users table if missing
+    user_cols = [row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()]
+    if 'phone_number' not in user_cols:
+        cursor.execute('ALTER TABLE users ADD COLUMN phone_number TEXT')
+    if 'status' not in user_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
+    if 'verification_token' not in user_cols:
+        cursor.execute('ALTER TABLE users ADD COLUMN verification_token TEXT')
+    if 'otp_code' not in user_cols:
+        cursor.execute('ALTER TABLE users ADD COLUMN otp_code TEXT')
+    if 'created_at' not in user_cols:
+        cursor.execute('ALTER TABLE users ADD COLUMN created_at DATETIME')
+    if 'updated_at' not in user_cols:
+        cursor.execute('ALTER TABLE users ADD COLUMN updated_at DATETIME')
+
     # Create characters table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS characters (
@@ -31,10 +52,19 @@ def init_db():
         name TEXT NOT NULL,
         avatar_url TEXT,
         system_prompt TEXT NOT NULL,
-        temperature REAL DEFAULT 0.7
+        temperature REAL DEFAULT 0.7,
+        era TEXT DEFAULT 'medieval',
+        region TEXT DEFAULT 'vietnam'
     )
     ''')
-    
+
+    # Migration for characters table
+    char_cols = [row[1] for row in cursor.execute("PRAGMA table_info(characters)").fetchall()]
+    if 'era' not in char_cols:
+        cursor.execute("ALTER TABLE characters ADD COLUMN era TEXT DEFAULT 'medieval'")
+    if 'region' not in char_cols:
+        cursor.execute("ALTER TABLE characters ADD COLUMN region TEXT DEFAULT 'vietnam'")
+
     # Create topics table (Dòng kiến thức)
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS topics (
@@ -45,7 +75,7 @@ def init_db():
         FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
     )
     ''')
-    
+
     # Create conversations table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS conversations (
@@ -96,88 +126,59 @@ def init_db():
             )
 
     conn.commit()
-    
+
     # Add default admin if not exists
     cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
     if not cursor.fetchone():
         admin_pass = generate_password_hash('admin123')
         cursor.execute(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            ('admin', 'admin@history.edu.vn', admin_pass, 'admin')
+            'INSERT INTO users (username, email, phone_number, password_hash, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+            ('admin', 'admin@history.edu.vn', '0901234567', admin_pass, 'admin', 'active')
         )
-    
+
     # Add default student if not exists
     cursor.execute('SELECT * FROM users WHERE username = ?', ('student',))
     if not cursor.fetchone():
         student_pass = generate_password_hash('student123')
         cursor.execute(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            ('student', 'student@history.edu.vn', student_pass, 'student')
+            'INSERT INTO users (username, email, phone_number, password_hash, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+            ('student', 'student@history.edu.vn', '0987654321', student_pass, 'student', 'active')
         )
-        
-    # Add default characters if none exist
-    cursor.execute('SELECT COUNT(*) FROM characters')
-    if cursor.fetchone()[0] == 0:
-        # Albert Einstein
-        cursor.execute('''
-        INSERT INTO characters (name, avatar_url, system_prompt, temperature)
-        VALUES (?, ?, ?, ?)
-        ''', (
-            'Albert Einstein',
-            '/static/images/einstein.png',
-            'Bạn là Albert Einstein, nhà vật lý lý thuyết vĩ đại người Đức. Hãy nói chuyện với học sinh bằng thái độ thông thái, tò mò, luôn sẵn lòng giải thích các hiện tượng khoa học phức tạp bằng cách so sánh gần gũi nhất. Hãy trả lời bằng tiếng Việt tự nhiên, sử dụng các từ ngữ hóm hỉnh và lịch sự. Xưng hô là "Ta" hoặc "Tôi" và gọi học sinh là "bạn" hoặc "nhà khoa học trẻ". Chỉ tập trung thảo luận về khoa học, vật lý, triết học và cuộc đời của bạn. Không trả lời các câu hỏi ngoài lề.',
-            0.7
-        ))
-        einstein_id = cursor.lastrowid
-        
-        # Einstein topics
-        cursor.execute('''
-        INSERT INTO topics (character_id, title, lecture_content)
-        VALUES (?, ?, ?)
-        ''', (
-            einstein_id,
-            'Hiệu ứng quang điện',
-            'Chào bạn! Tôi là Albert Einstein. Hôm nay chúng ta sẽ cùng khám phá Hiệu ứng Quang điện - công trình đã giúp tôi nhận giải Nobel Vật lý năm 1921. Bạn có biết rằng ánh sáng không chỉ lan truyền như những làn sóng, mà còn hoạt động giống như một dòng gồm các hạt năng lượng tí hon gọi là "photon"? Khi các photon này đập vào bề mặt kim loại, chúng truyền năng lượng cho các electron. Nếu năng lượng đủ lớn, electron sẽ bị "đá bay" ra ngoài, tạo ra dòng điện! Điều này giống như việc bạn dùng bóng bowling để ném đổ các chai pin vậy. Bạn có câu hỏi nào về cách ánh sáng tương tác với vật chất không?'
-        ))
-        cursor.execute('''
-        INSERT INTO topics (character_id, title, lecture_content)
-        VALUES (?, ?, ?)
-        ''', (
-            einstein_id,
-            'Thuyết tương đối hẹp',
-            'Xin chào! Hãy tưởng tượng bạn đang ngồi trên một con tàu chuyển động với tốc độ cực nhanh, gần bằng tốc độ ánh sáng. Đối với bạn, mọi thứ trên tàu vẫn bình thường, nhưng đối với một người đứng trên sân ga, thời gian của bạn dường như trôi chậm lại, và con tàu của bạn dường như bị co ngắn lại! Đó chính là cốt lõi của Thuyết tương đối hẹp mà tôi công bố năm 1905. Thời gian và không gian không hề tuyệt đối mà phụ thuộc vào tốc độ của người quan sát. Và từ đây, chúng ta có công thức nổi tiếng E=mc², cho thấy năng lượng và khối lượng thực chất là hai mặt của cùng một đồng xu. Bạn có thấy điều này kỳ diệu không?'
-        ))
-        
-        # Trần Hưng Đạo
-        cursor.execute('''
-        INSERT INTO characters (name, avatar_url, system_prompt, temperature)
-        VALUES (?, ?, ?, ?)
-        ''', (
-            'Trần Hưng Đạo',
-            '/static/images/tran_hung_dao.png',
-            'Bạn là Hưng Đạo Đại Vương Trần Quốc Tuấn (Trần Hưng Đạo), vị Tiết chế thống lĩnh các lực lượng quân sự Đại Việt trong kháng chiến chống quân Nguyên-Mông. Hãy nói chuyện với học sinh bằng phong thái uy nghiêm, trung quân ái quốc, trăn trở về vận mệnh đất nước nhưng hiền từ đối với thế hệ mai sau. Sử dụng ngôn từ trang trọng, hào sảng của một vị tướng thời Trần. Xưng hô là "Ta" và gọi học sinh là "ngươi" hoặc "kẻ hiếu học". Tập trung giảng dạy về lịch sử chiến đấu bảo vệ đất nước thời Trần, tinh thần đoàn kết toàn dân và nghệ thuật quân sự Đại Việt.',
-            0.6
-        ))
-        tran_id = cursor.lastrowid
-        
-        # Tran Hung Dao topics
-        cursor.execute('''
-        INSERT INTO topics (character_id, title, lecture_content)
-        VALUES (?, ?, ?)
-        ''', (
-            tran_id,
-            'Hịch tướng sĩ',
-            'Ta là Trần Quốc Tuấn. Nghe ta hỏi đây! Vận nước đang lúc ngàn cân treo sợi tóc, giặc Nguyên Mông hung hãn đang nhòm ngó cõi bờ. Ta viết Hịch Tướng Sĩ không chỉ để răn đe quân sĩ dưới trướng, mà là để khơi dậy lòng tự tôn dân tộc, chí khí căm thù giặc của muôn dân Đại Việt. Ta thường tới bữa quên ăn, nửa đêm vỗ gối, ruột đau như cắt, nước mắt đầm đìa, chỉ căm tức chưa xả thịt lột da, nuốt gan uống máu quân thù. Dẫu trăm thân này phơi ngoài nội cỏ, nghìn xác này gói trong da ngựa, ta cũng nguyện lòng! Ngươi có hiểu tại sao ý chí đồng lòng của quân dân lại là vũ khí sắc bén nhất để chiến thắng kẻ thù mạnh hơn gấp bội không?'
-        ))
-        cursor.execute('''
-        INSERT INTO topics (character_id, title, lecture_content)
-        VALUES (?, ?, ?)
-        ''', (
-            tran_id,
-            'Chiến thuật Vườn không nhà trống',
-            'Chào kẻ hiếu học Đại Việt! Quân Nguyên Mông mạnh về kỵ binh, hung hãn và tốc chiến tốc thắng. Nếu ta đối đầu trực diện với thế mạnh của chúng ở đồng bằng, dẫu có dũng cảm cũng khó lòng thủ vững. Do đó, ta cùng triều đình đã dùng kế sách "Vườn không nhà trống". Khi giặc đến, ta chủ động rút lui, mang theo lương thực, phá sạch cầu đường, khiến giặc rơi vào cảnh không có lương ăn, mệt mỏi và chán nản. Khi nhuệ khí của chúng đã suy giảm, thời tiết nắng nóng bệnh tật nổi lên, đó mới là lúc quân ta phản công giành thắng lợi quyết định trên sông Bạch Đằng. Kế sách này cốt ở chỗ biết nhu biết cương, biến bất lợi thành có lợi. Ngươi có thắc mắc gì về nghệ thuật quân sự này không?'
-        ))
-        
+
+    # Update character eras and regions
+    cursor.execute("UPDATE characters SET era='medieval', region='vietnam' WHERE name LIKE '%Trần Hưng Đạo%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Albert Einstein%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Alan Turing%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Charles Darwin%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Thomas Edison%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Marie Curie%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Isaac Newton%'")
+    cursor.execute("UPDATE characters SET era='modern', region='world' WHERE name LIKE '%Tesla%'")
+
+    # Helper list of default characters for missing era/regions
+    default_chars = [
+        ('An Dương Vương', '/static/images/an_duong_vuong.png',
+         'Bạn là An Dương Vương Thục Phán, vị vua lập ra nước Âu Lạc, xây đắp thành Cổ Loa 9 xoáy ốc và sở hữu truyền thuyết Nỏ Thần Thần Quang. Hãy trò chuyện với học sinh bằng thái độ hiền minh, trầm tư, đúc kết các bài học lịch sử sâu sắc về sự cảnh giác và tinh thần xây dựng đất nước.',
+         0.6, 'ancient', 'vietnam'),
+        ('Socrates', '/static/images/socrates.png',
+         'Bạn là Socrates, nhà triết học cổ đại Hy Lạp vĩ đại. Hãy dùng phương pháp vấn đáp (Socratic method) để đặt ra các câu hỏi kích thích tư duy học sinh về tri thức, đạo đức và công lý. Xưng hô là "Ta" và gọi học sinh là "bạn trẻ".',
+         0.7, 'ancient', 'world'),
+        ('Leonardo da Vinci', '/static/images/davinci.png',
+         'Bạn là Leonardo da Vinci, thiên tài toàn năng thời Phục Hưng nước Ý, họa sĩ vẽ bức Mona Lisa và tác giả của hàng trăm phát minh khoa học đi trước thời đại. Hãy trò chuyện tràn đầy cảm hứng sáng tạo và đam mê khám phá thiên nhiên.',
+         0.7, 'medieval', 'world'),
+        ('Võ Nguyên Giáp', '/static/images/vo_nguyen_giap.png',
+         'Bạn là Đại tướng Võ Nguyên Giáp, Tổng tư lệnh Quân đội Nhân dân Việt Nam, người anh cả của QĐNDVN, chỉ huy Chiến dịch Điện Biên Phủ lừng lẫy 5 châu. Hãy trò chuyện với học sinh bằng giọng nói ấm áp, điềm tĩnh, đề cao tinh thần yêu nước và sức mạnh đoàn kết toàn dân.',
+         0.6, 'modern', 'vietnam')
+    ]
+
+    for char_data in default_chars:
+        cursor.execute('SELECT id FROM characters WHERE name = ?', (char_data[0],))
+        if not cursor.fetchone():
+            cursor.execute('''
+            INSERT INTO characters (name, avatar_url, system_prompt, temperature, era, region)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''', char_data)
+
     conn.commit()
     conn.close()
 
