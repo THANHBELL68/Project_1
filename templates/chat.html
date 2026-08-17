@@ -45,7 +45,18 @@
                 </div>
 
                 <h3 class="mb-1 text-glow">{{ character.name }}</h3>
-                <p class="text-secondary small">Nhân vật lịch sử AI nhập vai</p>
+                <p class="text-secondary small mb-2">Nhân vật lịch sử AI nhập vai</p>
+                <div class="character-badges mb-3">
+                    <span class="badge bg-dark border border-success text-success d-inline-block mb-1">
+                        <i class="fa-solid fa-layer-group"></i> Lĩnh vực: {{ character.domain }}
+                    </span><br>
+                    <span class="badge bg-dark border border-warning text-warning me-1">
+                        {% if character.era == 'ancient' %}Cổ Đại{% elif character.era == 'medieval' %}Trung Đại{% else %}Hiện Đại{% endif %}
+                    </span>
+                    <span class="badge bg-dark border border-info text-info">
+                        {% if character.region == 'vietnam' %}Việt Nam{% else %}Thế Giới{% endif %}
+                    </span>
+                </div>
 
                 <!-- Voice controls -->
                 <div class="voice-panel mb-4">
@@ -92,7 +103,7 @@
     </div>
 
     <!-- Middle Column: Interactive Chat Panel -->
-    <div class="col-lg-5">
+    <div class="col-lg-6">
         <div class="chat-container">
             <!-- Header -->
             <div class="chat-messages-header">
@@ -158,7 +169,7 @@
     </div>
 
     <!-- Right Column: Conversation History Sidebar -->
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="conversation-sidebar">
             <div class="conversation-sidebar-header">
                 <i class="fa-solid fa-comments"></i> Lịch sử hội thoại
